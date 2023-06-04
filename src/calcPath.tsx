@@ -8,8 +8,11 @@ export const calcPath = (
 ): string => {
     const polar = polarPath(points, size);
 
-    const cx = W / 2;
-    const cy = H / 2;
+    const mx = 30; //dx / 2;
+    const my = 30; //dy / 2;
+
+    const cx = (W - mx * 2) / 2;
+    const cy = (H - my * 2) / 2;
     const R = Math.min(cx, cy) * 0.8;
 
     return polar
@@ -44,8 +47,8 @@ export function polarPath(points: Coord[], size: State['size']) {
             y: size.height - y,
         }))
         .map((p) => {
-            const r = p.x / size.width;
-            const t = (p.y / (size.height + 1)) * Math.PI * 2;
+            const r = p.x / (size.width - 1);
+            const t = (p.y / size.height - 1) * Math.PI * 2;
             return { t, r };
         });
 }

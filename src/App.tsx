@@ -1,6 +1,7 @@
 import React, { useReducer, useState } from 'react';
 import { Size } from './Size';
 import { calcPath, cart, polarPath } from './calcPath';
+import equal from 'fast-deep-equal';
 
 export type Coord = { x: number; y: number };
 
@@ -8,6 +9,7 @@ export type State = {
     size: { width: number; height: number };
     points: Coord[];
     selection: number[];
+    sections: number[];
 };
 
 export const reduceLocalStorage = <T, A>(
@@ -42,9 +44,11 @@ const initialState: State = {
     size: { width: 10, height: 10 },
     points: [],
     selection: [],
+    sections: [],
 };
 
 export type Action =
+    | { type: 'sections'; sections: number[] }
     | { type: 'size'; size: { width: number; height: number } }
     | { type: 'click'; pos: Coord }
     | { type: 'clear' }
@@ -60,7 +64,10 @@ const reduce = (state: State, action: Action): State => {
             return { ...state, size: action.size };
         case 'click':
             return { ...state, points: state.points.concat([action.pos]) };
+        case 'sections':
+            return { ...state, sections: action.sections };
     }
+    const _: never = action;
     return state;
 };
 
@@ -107,11 +114,12 @@ export const App = () => {
         () => initialState,
         reduce,
     );
+
     const [mouse, setMouse] = useState(null as Mouse | null);
     const mx = 30; //dx / 2;
     const my = 30; //dy / 2;
-    const dx = (W - mx * 2) / state.size.width;
-    const dy = (H - my * 2) / state.size.height;
+    const dx = (W - mx * 2) / (state.size.width - 1);
+    const dy = (H - my * 2) / (state.size.height - 1);
     const [amt, setAmt] = useLocalStorage('lb-amt', () => 0.1);
     return (
         <div>
@@ -121,8 +129,10 @@ export const App = () => {
                 size={state.size}
                 onChange={(size) => dispatch({ type: 'size', size })}
             />
-            <div>
+            <SectionsInput state={state} dispatch={dispatch} />
+            <div style={{ padding: 8 }}>
                 <svg
+                    style={{ border: '1px solid magenta' }}
                     onMouseLeave={() => setMouse(null)}
                     width={W}
                     height={H}
@@ -158,9 +168,24 @@ export const App = () => {
                                 .join(' ')}
                             fill="none"
                         />
+                        {state.sections.map((s, i) => (
+                            <line
+                                key={i}
+                                x1={0}
+                                x2={(state.size.width - 1) * dx}
+                                y1={(state.size.height - 1 - s) * dy}
+                                y2={(state.size.height - 1 - s) * dy}
+                                stroke="red"
+                                strokeWidth={2}
+                            />
+                        ))}
                     </g>
                 </svg>
-                <svg height={H} width={W}>
+                <svg
+                    height={H}
+                    width={W}
+                    style={{ border: '1px solid magenta', marginLeft: 8 }}
+                >
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
                             d={calcPath(
@@ -174,22 +199,6 @@ export const App = () => {
                             stroke="blue"
                             fill="none"
                         />
-                        {polarPath(
-                            state.points.slice(0, state.points.length * amt),
-                            state.size,
-                        ).map(({ r, t }) => {
-                            const cx = W / 2;
-                            const cy = H / 2;
-                            const R = Math.min(cx, cy) * 0.8;
-                            const { x, y } = cart(t, r, R, cx, cy);
-
-                            // return (
-                            //     <text x={x} y={y} fontSize={8}>
-                            //         T={t.toFixed(2)};
-                            //     </text>
-                            // );
-                            return null;
-                        })}
                     </g>
                 </svg>
             </div>
@@ -227,6 +236,34 @@ export const App = () => {
         </div>
     );
 };
+
+function SectionsInput({
+    state,
+    dispatch,
+}: {
+    state: State;
+    dispatch: React.Dispatch<Action>;
+}) {
+    const [v, setV] = useState(state.sections!.map((m) => m + '').join(' '));
+    let parsed = null as null | number[];
+    const values = v.split(' ').map((m) => parseFloat(m));
+    if (values.length && values.every((m) => !isNaN(m))) {
+        parsed = values;
+    }
+    return (
+        <div>
+            <input value={v} onChange={(evt) => setV(evt.target.value)} />
+            <button
+                disabled={!parsed || equal(parsed, state.sections)}
+                onClick={() =>
+                    dispatch({ type: 'sections', sections: parsed! })
+                }
+            >
+                Set
+            </button>
+        </div>
+    );
+}
 
 function mousePos(
     evt: React.MouseEvent<SVGSVGElement, MouseEvent>,
