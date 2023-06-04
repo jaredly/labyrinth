@@ -238,18 +238,17 @@ export const calcPath = (state: State): string => {
         .map((p, i) => {
             const yt = p.x / mw + 0.1;
             const xt = p.y / mh;
-            const r = yt * R;
+            const r = yt;
             const t = xt * Math.PI * 2;
-            return {
-                x: cx + Math.cos(t) * r,
-                y: cy + Math.sin(t) * r,
-            };
+            return { t, r };
         })
-        .map((p, i) => {
+        .map(({ t, r }, i) => {
+            const x = cx + Math.cos(t) * r * R;
+            const y = cy + Math.sin(t) * r * R;
             if (i == 0) {
-                return `M${p.x} ${p.y}`;
+                return `M${x} ${y}`;
             }
-            return `L${p.x} ${p.y}`;
+            return `L${x} ${y}`;
         })
         .join(' ');
 };
