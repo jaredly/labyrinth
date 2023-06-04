@@ -45,10 +45,13 @@ const initialState: State = {
 export type Action =
     | { type: 'size'; size: { width: number; height: number } }
     | { type: 'click'; pos: Coord }
-    | { type: 'clear' };
+    | { type: 'clear' }
+    | { type: 'undo' };
 
 const reduce = (state: State, action: Action): State => {
     switch (action.type) {
+        case 'undo':
+            return { ...state, points: state.points.slice(0, -1) };
         case 'clear':
             return { ...state, points: [] };
         case 'size':
@@ -59,8 +62,8 @@ const reduce = (state: State, action: Action): State => {
     return state;
 };
 
-const W = 800;
-const H = 800;
+const W = 800 / 2;
+const H = 800 / 2;
 
 const Grid = ({ size }: { size: State['size'] }) => {
     const points = [];
@@ -84,7 +87,7 @@ const Grid = ({ size }: { size: State['size'] }) => {
 
 type Mouse = { pos: Coord; drag?: Coord | null };
 
-const snap = (m: number, dm: number) => Math.round(m / dm) * dm;
+const snap = (m: number, dm: number) => Math.round(m / dm);
 const snapPos = ({ x, y }: Coord, dx: number, dy: number): Coord => ({
     x: snap(x, dx),
     y: snap(y, dy),
@@ -129,7 +132,7 @@ export const App = () => {
         () => initialState,
         reduce,
     );
-    const [mouse, setMouse] = useState({ pos: { x: 0, y: 0 } } as Mouse);
+    const [mouse, setMouse] = useState(null as Mouse | null);
     const dx = W / state.size.width;
     const dy = H / state.size.height;
     const mx = dx / 2;
@@ -137,14 +140,16 @@ export const App = () => {
     return (
         <div>
             <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
+            <button onClick={() => dispatch({ type: 'undo' })}>Undo</button>
             <Size
                 size={state.size}
                 onChange={(size) => dispatch({ type: 'size', size })}
             />
             <div>
                 <svg
-                    width="1600"
-                    height="800"
+                    onMouseLeave={() => setMouse(null)}
+                    width={W}
+                    height={H}
                     // viewBox={`-20 -20 1620 820`}
                     onMouseMove={(evt) => {
                         setMouse({ pos: mousePos(evt, mx, my) });
@@ -157,26 +162,56 @@ export const App = () => {
                     }}
                 >
                     <g transform={`translate(${mx}, ${my})`}>
-                        <rect x="10" y="10" width="20" height="40" fill="red" />
                         <Grid size={state.size} />
-                        <circle
-                            cx={mouse.pos.x}
-                            cy={mouse.pos.y}
-                            r={10}
-                            fill="#aaa"
-                        />
+                        {mouse ? (
+                            <circle
+                                cx={mouse.pos.x}
+                                cy={mouse.pos.y}
+                                r={10}
+                                fill="#aaa"
+                            />
+                        ) : null}
                         <polyline
                             stroke="blue"
-                            strokeWidth={3}
+                            strokeWidth={10}
                             points={state.points
-                                .concat(snapPos(mouse.pos, dx, dy))
-                                .map((p) => `${p.x},${p.y}`)
+                                .concat(
+                                    mouse ? [snapPos(mouse.pos, dx, dy)] : [],
+                                )
+                                .map((p) => `${p.x * dx},${p.y * dy}`)
                                 .join(' ')}
                             fill="none"
                         />
                     </g>
                 </svg>
+                <svg height={H} width={W}>
+                    <g transform={`translate(${mx}, ${my})`}>
+                        <path
+                            d={calcPath(state)}
+                            strokeWidth={5}
+                            stroke="blue"
+                            fill="none"
+                        />
+                    </g>
+                </svg>
             </div>
+            <button
+                onClick={() => {
+                    const blob = new Blob([JSON.stringify(state)], {
+                        type: 'application/json',
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `labyrinth-${Date.now()}.json`;
+                    a.click();
+                    setTimeout(() => {
+                        URL.revokeObjectURL(url);
+                    }, 100);
+                }}
+            >
+                Export
+            </button>
         </div>
     );
 };
@@ -190,3 +225,31 @@ function mousePos(
     const y = evt.clientY - box.top - my;
     return { x, y };
 }
+
+export const calcPath = (state: State): string => {
+    const mw = state.points.reduce((n, p) => Math.max(n, p.x), 0) + 1;
+    const mh = state.points.reduce((n, p) => Math.max(n, p.y), 0) + 1;
+
+    const cx = W / 2;
+    const cy = H / 2;
+    const R = Math.min(cx, cy) * 0.8;
+
+    return state.points
+        .map((p, i) => {
+            const yt = p.x / mw + 0.1;
+            const xt = p.y / mh;
+            const r = yt * R;
+            const t = xt * Math.PI * 2;
+            return {
+                x: cx + Math.cos(t) * r,
+                y: cy + Math.sin(t) * r,
+            };
+        })
+        .map((p, i) => {
+            if (i == 0) {
+                return `M${p.x} ${p.y}`;
+            }
+            return `L${p.x} ${p.y}`;
+        })
+        .join(' ');
+};
