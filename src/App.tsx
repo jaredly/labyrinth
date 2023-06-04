@@ -2,6 +2,7 @@ import React, { useReducer, useState } from 'react';
 import { Size } from './Size';
 import { calcPath, cart, polarPath } from './calcPath';
 import equal from 'fast-deep-equal';
+import { sectionMap } from './sections';
 
 export type Coord = { x: number; y: number };
 
@@ -152,6 +153,23 @@ export const App = () => {
         mouse = null;
     }
 
+    const gr2 = [];
+    const sm = sectionMap(state.sections, state.size, 20, 2);
+    for (let y = 0; y < state.size.height; y++) {
+        for (let x = 0; x < state.size.width; x++) {
+            const pos = sm[`${x},${y}`];
+            gr2.push(
+                <circle
+                    key={`${x},${y}`}
+                    cx={pos.x + W / 2}
+                    cy={pos.y + H / 2}
+                    r={5}
+                    fill="red"
+                />,
+            );
+        }
+    }
+
     return (
         <div>
             <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
@@ -233,6 +251,7 @@ export const App = () => {
                             fill="none"
                         />
                     </g>
+                    {gr2}
                 </svg>
             </div>
 
