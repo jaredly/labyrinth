@@ -67,10 +67,16 @@ const reduce = (state: State, action: Action): State => {
 export const W = 800 / 2;
 export const H = 800 / 2;
 
-const Grid = ({ size }: { size: State['size'] }) => {
+const Grid = ({
+    size,
+    dx,
+    dy,
+}: {
+    dx: number;
+    dy: number;
+    size: State['size'];
+}) => {
     const points = [];
-    const dx = W / size.width;
-    const dy = H / size.height;
     for (let x = 0; x < size.width; x++) {
         for (let y = 0; y < size.height; y++) {
             points.push(
@@ -102,11 +108,11 @@ export const App = () => {
         reduce,
     );
     const [mouse, setMouse] = useState(null as Mouse | null);
-    const dx = W / state.size.width;
-    const dy = H / state.size.height;
-    const mx = dx / 2;
+    const mx = 30; //dx / 2;
+    const my = 30; //dy / 2;
+    const dx = (W - mx * 2) / state.size.width;
+    const dy = (H - my * 2) / state.size.height;
     const [amt, setAmt] = useLocalStorage('lb-amt', () => 0.1);
-    const my = dy / 2;
     return (
         <div>
             <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
@@ -132,7 +138,7 @@ export const App = () => {
                     }}
                 >
                     <g transform={`translate(${mx}, ${my})`}>
-                        <Grid size={state.size} />
+                        <Grid size={state.size} dx={dx} dy={dy} />
                         {mouse ? (
                             <circle
                                 cx={mouse.pos.x}
@@ -162,6 +168,7 @@ export const App = () => {
                                     0,
                                     state.points.length * amt,
                                 ),
+                                state.size,
                             )}
                             strokeWidth={5}
                             stroke="blue"
