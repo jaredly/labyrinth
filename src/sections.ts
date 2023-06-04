@@ -51,14 +51,16 @@ export const sectionMap = (
         const { offset, section } = map[y];
         for (let x = 0; x < size.width; x++) {
             const r = (r0 + x) * dr;
-            const t = (section / numSections) * Math.PI * 2;
+            let t = (section / numSections) * Math.PI * 2;
 
             const t2 = t + Math.PI / 2;
             const r2 = offset * dr;
 
+            t += (offset * dr) / r;
+
             mapping[`${x},${y}`] = {
-                x: Math.cos(t) * r + Math.cos(t2) * r2,
-                y: Math.sin(t) * r + Math.sin(t2) * r2,
+                x: Math.cos(t) * r, // + Math.cos(t2) * r2,
+                y: Math.sin(t) * r, // + Math.sin(t2) * r2,
             };
         }
     }

@@ -154,7 +154,7 @@ export const App = () => {
     }
 
     const gr2 = [];
-    const sm = sectionMap(state.sections, state.size, 20, 2);
+    const sm = sectionMap(state.sections, state.size, 15, 3);
     for (let y = 0; y < state.size.height; y++) {
         for (let x = 0; x < state.size.width; x++) {
             const pos = sm[`${x},${y}`];
