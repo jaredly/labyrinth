@@ -115,12 +115,43 @@ export const App = () => {
         reduce,
     );
 
-    const [mouse, setMouse] = useState(null as Mouse | null);
+    let [mouse, setMouse] = useState(null as Mouse | null);
     const mx = 30; //dx / 2;
     const my = 30; //dy / 2;
     const dx = (W - mx * 2) / (state.size.width - 1);
     const dy = (H - my * 2) / (state.size.height - 1);
     const [amt, setAmt] = useLocalStorage('lb-amt', () => 0.1);
+
+    const sectionDots = [];
+    for (let i = -0.5; i < state.size.height + 0.5; i += 0.5) {
+        const idx = state.sections.indexOf(i);
+        sectionDots.push(
+            <circle
+                key={i}
+                cx={-mx / 2}
+                cy={dy * (state.size.height - 1 - i)}
+                r={10}
+                fill={idx !== -1 ? (idx % 2 === 0 ? 'red' : 'blue') : 'gray'}
+                onClick={(evt) => {
+                    evt.stopPropagation();
+                    evt.preventDefault();
+                    let s = state.sections.slice();
+                    if (s.includes(i)) {
+                        s = s.filter((n) => n !== i);
+                    } else {
+                        s.push(i);
+                        s.sort();
+                    }
+                    dispatch({ type: 'sections', sections: s });
+                }}
+                style={{ cursor: 'pointer' }}
+            />,
+        );
+    }
+    if ((mouse?.pos.x ?? 0) < 0) {
+        mouse = null;
+    }
+
     return (
         <div>
             <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
@@ -149,6 +180,7 @@ export const App = () => {
                 >
                     <g transform={`translate(${mx}, ${my})`}>
                         <Grid size={state.size} dx={dx} dy={dy} />
+                        {sectionDots}
                         {mouse ? (
                             <circle
                                 cx={mouse.pos.x}
@@ -175,7 +207,8 @@ export const App = () => {
                                 x2={(state.size.width - 1) * dx}
                                 y1={(state.size.height - 1 - s) * dy}
                                 y2={(state.size.height - 1 - s) * dy}
-                                stroke="red"
+                                stroke={i % 2 === 0 ? 'red' : 'blue'}
+                                strokeDasharray={i % 2 === 0 ? '' : '4 4'}
                                 strokeWidth={2}
                             />
                         ))}
