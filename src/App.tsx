@@ -1,4 +1,6 @@
 import React, { useReducer, useState } from 'react';
+import { Size } from './Size';
+import { calcPath } from './calcPath';
 
 export type Coord = { x: number; y: number };
 
@@ -62,8 +64,8 @@ const reduce = (state: State, action: Action): State => {
     return state;
 };
 
-const W = 800 / 2;
-const H = 800 / 2;
+export const W = 800 / 2;
+export const H = 800 / 2;
 
 const Grid = ({ size }: { size: State['size'] }) => {
     const points = [];
@@ -93,39 +95,6 @@ const snapPos = ({ x, y }: Coord, dx: number, dy: number): Coord => ({
     y: snap(y, dy),
 });
 
-const Size = ({
-    size,
-    onChange,
-}: {
-    size: State['size'];
-    onChange: (s: State['size']) => void;
-}) => {
-    const [width, setWidth] = useState(null as null | number);
-    const [height, setHeight] = useState(null as null | number);
-    return (
-        <div>
-            <input
-                value={width ?? size.width}
-                onChange={(evt) => setWidth(+evt.target.value)}
-            />
-            <input
-                value={height ?? size.height}
-                onChange={(evt) => setHeight(+evt.target.value)}
-            />
-            <button
-                onClick={() =>
-                    onChange({
-                        width: width ?? size.width,
-                        height: height ?? size.height,
-                    })
-                }
-            >
-                Ok
-            </button>
-        </div>
-    );
-};
-
 export const App = () => {
     const [state, dispatch] = reduceLocalStorage(
         'labyrinth',
@@ -136,6 +105,7 @@ export const App = () => {
     const dx = W / state.size.width;
     const dy = H / state.size.height;
     const mx = dx / 2;
+    const [amt, setAmt] = useLocalStorage('lb-amt', () => 0.1);
     const my = dy / 2;
     return (
         <div>
@@ -187,13 +157,32 @@ export const App = () => {
                 <svg height={H} width={W}>
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
-                            d={calcPath(state)}
+                            d={calcPath(
+                                state.points.slice(
+                                    0,
+                                    state.points.length * amt,
+                                ),
+                            )}
                             strokeWidth={5}
                             stroke="blue"
                             fill="none"
                         />
                     </g>
                 </svg>
+            </div>
+
+            <input
+                type="range"
+                min="0"
+                max="1"
+                step={1 / state.points.length}
+                value={amt}
+                onChange={(evt) => setAmt(+evt.target.value)}
+            />
+            <div>
+                {JSON.stringify(
+                    state.points.slice(0, state.points.length * amt),
+                )}
             </div>
             <button
                 onClick={() => {
@@ -215,6 +204,7 @@ export const App = () => {
         </div>
     );
 };
+
 function mousePos(
     evt: React.MouseEvent<SVGSVGElement, MouseEvent>,
     mx: number,
@@ -225,30 +215,3 @@ function mousePos(
     const y = evt.clientY - box.top - my;
     return { x, y };
 }
-
-export const calcPath = (state: State): string => {
-    const mw = state.points.reduce((n, p) => Math.max(n, p.x), 0) + 1;
-    const mh = state.points.reduce((n, p) => Math.max(n, p.y), 0) + 1;
-
-    const cx = W / 2;
-    const cy = H / 2;
-    const R = Math.min(cx, cy) * 0.8;
-
-    return state.points
-        .map((p, i) => {
-            const yt = p.x / mw + 0.1;
-            const xt = p.y / mh;
-            const r = yt;
-            const t = xt * Math.PI * 2;
-            return { t, r };
-        })
-        .map(({ t, r }, i) => {
-            const x = cx + Math.cos(t) * r * R;
-            const y = cy + Math.sin(t) * r * R;
-            if (i == 0) {
-                return `M${x} ${y}`;
-            }
-            return `L${x} ${y}`;
-        })
-        .join(' ');
-};
