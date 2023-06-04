@@ -1,6 +1,6 @@
 import React, { useReducer, useState } from 'react';
 import { Size } from './Size';
-import { calcPath } from './calcPath';
+import { calcPath, cart, polarPath } from './calcPath';
 
 export type Coord = { x: number; y: number };
 
@@ -174,6 +174,22 @@ export const App = () => {
                             stroke="blue"
                             fill="none"
                         />
+                        {polarPath(
+                            state.points.slice(0, state.points.length * amt),
+                            state.size,
+                        ).map(({ r, t }) => {
+                            const cx = W / 2;
+                            const cy = H / 2;
+                            const R = Math.min(cx, cy) * 0.8;
+                            const { x, y } = cart(t, r, R, cx, cy);
+
+                            // return (
+                            //     <text x={x} y={y} fontSize={8}>
+                            //         T={t.toFixed(2)};
+                            //     </text>
+                            // );
+                            return null;
+                        })}
                     </g>
                 </svg>
             </div>
