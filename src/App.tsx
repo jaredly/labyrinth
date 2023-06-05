@@ -51,11 +51,20 @@ const initialState: State = {
 
 export type Action =
     | { type: 'sections'; sections: number[] }
+    | { type: 'flip'; x: boolean }
     | { type: 'size'; size: { width: number; height: number } }
     | { type: 'click'; pos: Coord }
     | { type: 'clear' }
     | { type: 'inner'; inner: number }
     | { type: 'undo' };
+
+const flip = (points: Coord[], size: State['size'], x: boolean) => {
+    if (x) {
+        return points.map(({ x, y }) => ({ x: size.width - 1 - x, y }));
+    } else {
+        return points.map(({ x, y }) => ({ y: size.height - 1 - y, x }));
+    }
+};
 
 const reduce = (state: State, action: Action): State => {
     switch (action.type) {
@@ -71,6 +80,11 @@ const reduce = (state: State, action: Action): State => {
             return { ...state, points: state.points.concat([action.pos]) };
         case 'sections':
             return { ...state, sections: action.sections };
+        case 'flip':
+            return {
+                ...state,
+                points: flip(state.points, state.size, action.x),
+            };
     }
     const _: never = action;
     return state;
@@ -190,7 +204,7 @@ export const App = () => {
     const cy = (H - my * 2) / 2;
 
     const ms = mouse ? snapPos(mouse.pos, dx, dy) : null;
-    const mp = ms ? sm[`${ms.x},${ms.y}`] : null;
+    const mp = ms ? sm[`${state.size.width - 1 - ms.x},${ms.y}`] : null;
     const showPoints = state.points.slice(0, state.points.length * amt);
     // console.log(mp, mouse);
 
@@ -200,6 +214,12 @@ export const App = () => {
         <div>
             <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
             <button onClick={() => dispatch({ type: 'undo' })}>Undo</button>
+            <button onClick={() => dispatch({ type: 'flip', x: true })}>
+                Flip X
+            </button>
+            <button onClick={() => dispatch({ type: 'flip', x: false })}>
+                Flip Y
+            </button>
             <Size
                 size={state.size}
                 onChange={(size) => dispatch({ type: 'size', size })}

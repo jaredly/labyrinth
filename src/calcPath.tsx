@@ -11,7 +11,7 @@ export const calcPath = (
     my: number,
 ): string => {
     const polar = points
-        // .map(({x,y}) => ({x: size.width + 1 - x, y: size.height + 1 - y}))
+        .map(({ x, y }) => ({ x: size.width - 1 - x, y })) // : size.height - 1 - y}))
         .map(({ x, y }) => sectionMap[`${x},${y}`])
         .filter(Boolean);
     // polarPath(points, size);
