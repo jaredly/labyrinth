@@ -2,7 +2,7 @@ import React, { useReducer, useState } from 'react';
 import { Size } from './Size';
 import { calcPath, cart, polarPath } from './calcPath';
 import equal from 'fast-deep-equal';
-import { sectionMap } from './sections';
+import { SectionMap, sectionMap } from './sections';
 
 export type Coord = { x: number; y: number };
 
@@ -248,7 +248,7 @@ export const App = () => {
                     width={W}
                     style={{ border: '1px solid magenta', marginLeft: 8 }}
                 >
-                    {gr2}
+                    {/* {gr2} */}
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
                             d={calcPath(showPoints, state.size, sm)}
@@ -264,6 +264,7 @@ export const App = () => {
                                 fill="orange"
                             />
                         ) : null}
+                        {/* {debugPoints(showPoints, sm, cx, cy)} */}
                     </g>
                 </svg>
             </div>
@@ -297,6 +298,37 @@ export const App = () => {
         </div>
     );
 };
+
+function debugPoints(
+    showPoints: Coord[],
+    sm: SectionMap,
+    cx: number,
+    cy: number,
+): React.ReactNode {
+    return showPoints.map((pos, i) => {
+        if (i === 0) {
+            return;
+        }
+        const prev = sm[`${showPoints[i - 1].x},${showPoints[i - 1].y}`];
+        const { t, r } = sm[`${pos.x},${pos.y}`];
+        // if (prev.r !== r) {
+        //     return;
+        // }
+        const x = Math.cos(t) * r + cx;
+        const y = Math.sin(t) * r + cy;
+        const text = `${t.toFixed(2)}`;
+        return (
+            <React.Fragment key={i}>
+                <text x={x} y={y} strokeWidth={3} fill="white" stroke="white">
+                    {text}
+                </text>
+                <text x={x} y={y}>
+                    {text}
+                </text>
+            </React.Fragment>
+        );
+    });
+}
 
 function SectionsInput({
     state,

@@ -1,4 +1,5 @@
 import { Coord, State } from './App';
+import { normalizeAngle } from './calcPath';
 
 /*
 from the sections
@@ -37,13 +38,24 @@ const ySectionMap = (sections: number[], height: number) => {
     return map;
 };
 
+export type SectionMap = {
+    [pos: string]: {
+        t: number;
+        r: number;
+        x: number;
+        y: number;
+        offset: number;
+        section: number;
+    };
+};
+
 export const sectionMap = (
     sections: number[],
     size: State['size'],
     dr: number,
     r0: number,
 ) => {
-    const mapping: { [pos: string]: { t: number; r: number } } = {};
+    const mapping: SectionMap = {};
     const map = ySectionMap(sections, size.height);
     const numSections = (sections.length - 1) / 2;
     // console.log('section ys', map);
@@ -59,8 +71,12 @@ export const sectionMap = (
             t += (offset * dr) / r;
 
             mapping[`${x},${y}`] = {
-                t,
+                t: normalizeAngle(t),
                 r,
+                x,
+                y,
+                offset,
+                section,
                 // x: Math.cos(t) * r, // + Math.cos(t2) * r2,
                 // y: Math.sin(t) * r, // + Math.sin(t2) * r2,
             };
