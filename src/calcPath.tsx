@@ -7,15 +7,14 @@ export const calcPath = (
     points: State['points'],
     size: State['size'],
     sectionMap: SectionMap,
+    mx: number,
+    my: number,
 ): string => {
     const polar = points
         // .map(({x,y}) => ({x: size.width + 1 - x, y: size.height + 1 - y}))
         .map(({ x, y }) => sectionMap[`${x},${y}`])
         .filter(Boolean);
     // polarPath(points, size);
-
-    const mx = 30; //dx / 2;
-    const my = 30; //dy / 2;
 
     const cx = (W - mx * 2) / 2;
     const cy = (H - my * 2) / 2;

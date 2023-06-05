@@ -1,4 +1,4 @@
-import React, { useReducer, useState } from 'react';
+import React, { useReducer, useRef, useState } from 'react';
 import { Size } from './Size';
 import { calcPath, cart, polarPath } from './calcPath';
 import equal from 'fast-deep-equal';
@@ -11,6 +11,7 @@ export type State = {
     points: Coord[];
     selection: number[];
     sections: number[];
+    inner?: number;
 };
 
 export const reduceLocalStorage = <T, A>(
@@ -53,6 +54,7 @@ export type Action =
     | { type: 'size'; size: { width: number; height: number } }
     | { type: 'click'; pos: Coord }
     | { type: 'clear' }
+    | { type: 'inner'; inner: number }
     | { type: 'undo' };
 
 const reduce = (state: State, action: Action): State => {
@@ -61,6 +63,8 @@ const reduce = (state: State, action: Action): State => {
             return { ...state, points: state.points.slice(0, -1) };
         case 'clear':
             return { ...state, points: [] };
+        case 'inner':
+            return { ...state, inner: action.inner };
         case 'size':
             return { ...state, size: action.size };
         case 'click':
@@ -117,11 +121,13 @@ export const App = () => {
     );
 
     let [mouse, setMouse] = useState(null as Mouse | null);
-    const mx = 30; //dx / 2;
-    const my = 30; //dy / 2;
+    const mx = 60; //dx / 2;
+    const my = 60; //dy / 2;
     const dx = (W - mx * 2) / (state.size.width - 1);
     const dy = (H - my * 2) / (state.size.height - 1);
     const [amt, setAmt] = useLocalStorage('lb-amt', () => 0.1);
+
+    state.inner = state.inner ?? 3;
 
     const sectionDots = [];
     for (let i = -0.5; i < state.size.height + 0.5; i += 0.5) {
@@ -153,8 +159,15 @@ export const App = () => {
         mouse = null;
     }
 
+    const R = Math.min(W - mx, H - my) / 2;
+
     const gr2 = [];
-    const sm = sectionMap(state.sections, state.size, 15, 3);
+    const sm = sectionMap(
+        state.sections,
+        state.size,
+        R / (state.size.width + state.inner),
+        state.inner,
+    );
     for (let y = 0; y < state.size.height; y++) {
         for (let x = 0; x < state.size.width; x++) {
             const { t, r } = sm[`${x},${y}`];
@@ -181,6 +194,8 @@ export const App = () => {
     const showPoints = state.points.slice(0, state.points.length * amt);
     // console.log(mp, mouse);
 
+    const ref = useRef<SVGSVGElement>(null);
+
     return (
         <div>
             <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
@@ -196,7 +211,6 @@ export const App = () => {
                     onMouseLeave={() => setMouse(null)}
                     width={W}
                     height={H}
-                    // viewBox={`-20 -20 1620 820`}
                     onMouseMove={(evt) => {
                         setMouse({ pos: mousePos(evt, mx, my) });
                     }}
@@ -247,11 +261,13 @@ export const App = () => {
                     height={H}
                     width={W}
                     style={{ border: '1px solid magenta', marginLeft: 8 }}
+                    ref={ref}
+                    xmlns="http://www.w3.org/2000/svg"
                 >
                     {/* {gr2} */}
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
-                            d={calcPath(showPoints, state.size, sm)}
+                            d={calcPath(showPoints, state.size, sm, mx, my)}
                             strokeWidth={5}
                             stroke="blue"
                             fill="none"
@@ -269,6 +285,19 @@ export const App = () => {
                 </svg>
             </div>
 
+            <div>
+                <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step={0.5}
+                    value={state.inner}
+                    onChange={(evt) =>
+                        dispatch({ type: 'inner', inner: +evt.target.value })
+                    }
+                />
+            </div>
+
             <input
                 type="range"
                 min="0"
@@ -280,13 +309,17 @@ export const App = () => {
             <div>{JSON.stringify(showPoints)}</div>
             <button
                 onClick={() => {
-                    const blob = new Blob([JSON.stringify(state)], {
-                        type: 'application/json',
-                    });
+                    const svg = ref.current!.outerHTML;
+                    const blob = new Blob(
+                        [svg + `\n<!-- STATE: ${JSON.stringify(state)} -->`],
+                        {
+                            type: 'image/svg+xml',
+                        },
+                    );
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `labyrinth-${Date.now()}.json`;
+                    a.download = `labyrinth-${Date.now()}.svg`;
                     a.click();
                     setTimeout(() => {
                         URL.revokeObjectURL(url);

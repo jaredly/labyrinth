@@ -70,8 +70,8 @@ export const sectionMap = (
 
             t += (offset * dr) / r;
 
-            mapping[`${x},${y}`] = {
-                t: normalizeAngle(t),
+            mapping[`${x},${size.height - 1 - y}`] = {
+                t: normalizeAngle(t) + Math.PI / 2,
                 r,
                 x,
                 y,
