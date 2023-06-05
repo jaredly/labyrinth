@@ -157,18 +157,29 @@ export const App = () => {
     const sm = sectionMap(state.sections, state.size, 15, 3);
     for (let y = 0; y < state.size.height; y++) {
         for (let x = 0; x < state.size.width; x++) {
-            const pos = sm[`${x},${y}`];
+            const { t, r } = sm[`${x},${y}`];
             gr2.push(
                 <circle
                     key={`${x},${y}`}
-                    cx={pos.x + W / 2}
-                    cy={pos.y + H / 2}
+                    cx={Math.cos(t) * r + W / 2}
+                    cy={Math.sin(t) * r + H / 2}
                     r={5}
                     fill="red"
                 />,
             );
         }
     }
+
+    // const mx = 30; //dx / 2;
+    // const my = 30; //dy / 2;
+
+    const cx = (W - mx * 2) / 2;
+    const cy = (H - my * 2) / 2;
+
+    const ms = mouse ? snapPos(mouse.pos, dx, dy) : null;
+    const mp = ms ? sm[`${ms.x},${ms.y}`] : null;
+    const showPoints = state.points.slice(0, state.points.length * amt);
+    // console.log(mp, mouse);
 
     return (
         <div>
@@ -237,21 +248,23 @@ export const App = () => {
                     width={W}
                     style={{ border: '1px solid magenta', marginLeft: 8 }}
                 >
+                    {gr2}
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
-                            d={calcPath(
-                                state.points.slice(
-                                    0,
-                                    state.points.length * amt,
-                                ),
-                                state.size,
-                            )}
+                            d={calcPath(showPoints, state.size, sm)}
                             strokeWidth={5}
                             stroke="blue"
                             fill="none"
                         />
+                        {mp ? (
+                            <circle
+                                cx={Math.cos(mp.t) * mp.r + cx}
+                                cy={Math.sin(mp.t) * mp.r + cy}
+                                r={5}
+                                fill="orange"
+                            />
+                        ) : null}
                     </g>
-                    {gr2}
                 </svg>
             </div>
 
@@ -263,11 +276,7 @@ export const App = () => {
                 value={amt}
                 onChange={(evt) => setAmt(+evt.target.value)}
             />
-            <div>
-                {JSON.stringify(
-                    state.points.slice(0, state.points.length * amt),
-                )}
-            </div>
+            <div>{JSON.stringify(showPoints)}</div>
             <button
                 onClick={() => {
                     const blob = new Blob([JSON.stringify(state)], {
