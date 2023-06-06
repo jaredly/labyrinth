@@ -1,4 +1,4 @@
-import React, { useReducer, useRef, useState } from 'react';
+import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { Size } from './Size';
 import { calcPath, cart, polarPath } from './calcPath';
 import equal from 'fast-deep-equal';
@@ -56,8 +56,10 @@ export type Action =
     | { type: 'size'; size: { width: number; height: number } }
     | { type: 'click'; pos: Coord }
     | { type: 'clear' }
+    | { type: 'delete' }
     | { type: 'reset'; state: State }
     | { type: 'inner'; inner: number }
+    | { type: 'select'; selection: number[] }
     | { type: 'undo' };
 
 const flip = (points: Coord[], size: State['size'], x: boolean) => {
@@ -72,6 +74,8 @@ const reduce = (state: State, action: Action): State => {
     switch (action.type) {
         case 'undo':
             return { ...state, points: state.points.slice(0, -1) };
+        case 'select':
+            return { ...state, selection: action.selection };
         case 'clear':
             return { ...state, points: [] };
         case 'inner':
@@ -84,6 +88,14 @@ const reduce = (state: State, action: Action): State => {
             return { ...state, points: state.points.concat([action.pos]) };
         case 'sections':
             return { ...state, sections: action.sections };
+        case 'delete':
+            return {
+                ...state,
+                selection: [],
+                points: state.points.filter(
+                    (_, i) => !state.selection.includes(i),
+                ),
+            };
         case 'flip':
             return {
                 ...state,
@@ -146,6 +158,8 @@ export const App = () => {
     const [amt, setAmt] = useLocalStorage('lb-amt', () => 0.1);
 
     state.inner = state.inner ?? 3;
+
+    const [mode, setMode] = useState('add' as 'add' | 'move');
 
     const sectionDots = [];
     for (let i = -0.5; i < state.size.height + 0.5; i += 1) {
@@ -229,7 +243,10 @@ export const App = () => {
 
     const ms = mouse ? snapPos(mouse.pos, dx, dy) : null;
     const mp = ms ? sm[`${state.size.width - 1 - ms.x},${ms.y}`] : null;
-    const showPoints = state.points.slice(0, state.points.length * amt);
+    const showPoints =
+        amt >= 0.9
+            ? state.points
+            : state.points.slice(0, state.points.length * amt);
     // console.log(mp, mouse);
 
     const ref = useRef<SVGSVGElement>(null);
@@ -240,8 +257,28 @@ export const App = () => {
         }
     });
 
+    const st = React.useRef(state);
+    st.current = state;
+
+    useEffect(() => {
+        const fn = (evt: KeyboardEvent) => {
+            const state = st.current;
+            if (evt.key === 'Delete' || evt.key === 'Backspace') {
+                dispatch({ type: 'delete' });
+            }
+        };
+        document.addEventListener('keydown', fn);
+        return () => document.removeEventListener('keydown', fn);
+    }, []);
+
     return (
         <div {...callbacks}>
+            <button disabled={mode === 'move'} onClick={() => setMode('move')}>
+                Move
+            </button>
+            <button disabled={mode === 'add'} onClick={() => setMode('add')}>
+                Add
+            </button>
             <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
             <button onClick={() => dispatch({ type: 'undo' })}>Undo</button>
             <button onClick={() => dispatch({ type: 'flip', x: true })}>
@@ -262,13 +299,17 @@ export const App = () => {
                     width={W}
                     height={H}
                     onMouseMove={(evt) => {
-                        setMouse({ pos: mousePos(evt, mx, my) });
+                        if (mode === 'add') {
+                            setMouse({ pos: mousePos(evt, mx, my) });
+                        }
                     }}
                     onClick={(evt) => {
-                        dispatch({
-                            type: 'click',
-                            pos: snapPos(mousePos(evt, mx, my), dx, dy),
-                        });
+                        if (mode === 'add') {
+                            dispatch({
+                                type: 'click',
+                                pos: snapPos(mousePos(evt, mx, my), dx, dy),
+                            });
+                        }
                     }}
                 >
                     <g transform={`translate(${mx}, ${my})`}>
@@ -288,7 +329,9 @@ export const App = () => {
                             strokeWidth={10}
                             points={state.points
                                 .concat(
-                                    mouse ? [snapPos(mouse.pos, dx, dy)] : [],
+                                    mode === 'add' && mouse
+                                        ? [snapPos(mouse.pos, dx, dy)]
+                                        : [],
                                 )
                                 .map((p) => `${p.x * dx},${p.y * dy}`)
                                 .join(' ')}
@@ -306,6 +349,29 @@ export const App = () => {
                                 strokeWidth={2}
                             />
                         ))}
+                        {mode === 'move' ? (
+                            <g>
+                                {state.points.map(({ x, y }, i) => (
+                                    <circle
+                                        key={i}
+                                        cx={x * dx}
+                                        cy={y * dy}
+                                        r={10}
+                                        fill={
+                                            state.selection.includes(i)
+                                                ? 'green'
+                                                : 'blue'
+                                        }
+                                        onClick={() => {
+                                            dispatch({
+                                                type: 'select',
+                                                selection: [i],
+                                            });
+                                        }}
+                                    />
+                                ))}
+                            </g>
+                        ) : null}
                     </g>
                 </svg>
                 <svg
