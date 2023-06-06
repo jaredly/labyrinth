@@ -197,6 +197,12 @@ export function CartesianEdits({
                                     });
                                 }}
                                 onClick={(evt) => {
+                                    if (!evt.shiftKey) {
+                                        dispatch({
+                                            type: 'select',
+                                            selection: [i],
+                                        });
+                                    }
                                     // if (evt.shiftKey) {
                                     //     dispatch({
                                     //         type: 'select',

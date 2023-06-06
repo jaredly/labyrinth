@@ -278,6 +278,11 @@ export const App = () => {
             if (evt.key === 'z' && (evt.ctrlKey || evt.metaKey)) {
                 dispatch({ type: 'undo' });
             }
+            if (evt.key === 'a' && evt.metaKey) {
+                evt.preventDefault();
+                const all = st.current.points.map((p, i) => i);
+                dispatch({ type: 'select', selection: all });
+            }
         };
         document.addEventListener('keydown', fn);
         return () => document.removeEventListener('keydown', fn);
