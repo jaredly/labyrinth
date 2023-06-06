@@ -201,6 +201,26 @@ export const App = () => {
         }
     }
 
+    const crossLines: JSX.Element[] = [];
+    state.sections.forEach((s, i) => {
+        s = state.size.height - 1 - s;
+        if (i % 2 === 1) {
+            for (let x = 0; x < state.size.width; x++) {
+                crossLines.push(
+                    <line
+                        key={`${i}:${x}`}
+                        x1={x * dx}
+                        x2={x * dx}
+                        y1={(s - 0.5) * dy}
+                        y2={(s + 0.5) * dy}
+                        stroke="gray"
+                        strokeWidth={2}
+                    />,
+                );
+            }
+        }
+    });
+
     // const mx = 30; //dx / 2;
     // const my = 30; //dy / 2;
 
@@ -252,6 +272,7 @@ export const App = () => {
                     }}
                 >
                     <g transform={`translate(${mx}, ${my})`}>
+                        {crossLines}
                         <Grid size={state.size} dx={dx} dy={dy} />
                         {sectionDots}
                         {mouse ? (
@@ -416,6 +437,26 @@ function SectionsInput({
                 }
             >
                 Set
+            </button>
+            <button
+                onClick={() =>
+                    dispatch({
+                        type: 'sections',
+                        sections: state.sections.map((s) => s - 1),
+                    })
+                }
+            >
+                &lt;-
+            </button>
+            <button
+                onClick={() =>
+                    dispatch({
+                        type: 'sections',
+                        sections: state.sections.map((s) => s + 1),
+                    })
+                }
+            >
+                -&gt;
             </button>
         </div>
     );
