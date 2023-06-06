@@ -139,11 +139,11 @@ export function CartesianEdits({
                     stroke="blue"
                     strokeWidth={10}
                     points={movedPoints
-                        .concat(
-                            mode === 'add' && mouse
-                                ? [snapPos(mouse.pos, dx, dy)]
-                                : [],
-                        )
+                        // .concat(
+                        //     mode === 'add' && mouse
+                        //         ? [snapPos(mouse.pos, dx, dy)]
+                        //         : [],
+                        // )
                         .map((p) => `${p.x * dx},${p.y * dy}`)
                         .join(' ')}
                     fill="none"
@@ -173,11 +173,20 @@ export function CartesianEdits({
                                         ? 'green'
                                         : 'blue'
                                 }
-                                onMouseDown={() => {
+                                onMouseDown={(evt) => {
                                     if (!state.selection.includes(i)) {
                                         dispatch({
                                             type: 'select',
-                                            selection: [i],
+                                            selection: evt.shiftKey
+                                                ? state.selection.concat([i])
+                                                : [i],
+                                        });
+                                    } else if (evt.shiftKey) {
+                                        dispatch({
+                                            type: 'select',
+                                            selection: state.selection.filter(
+                                                (s) => s !== i,
+                                            ),
                                         });
                                     }
                                     const pos = { x, y };
@@ -187,11 +196,24 @@ export function CartesianEdits({
                                         to: pos,
                                     });
                                 }}
-                                onClick={() => {
-                                    dispatch({
-                                        type: 'select',
-                                        selection: [i],
-                                    });
+                                onClick={(evt) => {
+                                    // if (evt.shiftKey) {
+                                    //     dispatch({
+                                    //         type: 'select',
+                                    //         selection: state.selection.includes(
+                                    //             i,
+                                    //         )
+                                    //             ? state.selection.filter(
+                                    //                   (s) => s !== i,
+                                    //               )
+                                    //             : state.selection.concat([i]),
+                                    //     });
+                                    // } else {
+                                    //     dispatch({
+                                    //         type: 'select',
+                                    //         selection: [i],
+                                    //     });
+                                    // }
                                 }}
                             />
                         ))}

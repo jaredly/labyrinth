@@ -1,2 +1,3 @@
 
-- [ ] circles in the middle
+- [x] circles in the middle
+- [ ] move a bunches

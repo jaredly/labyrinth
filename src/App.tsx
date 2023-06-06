@@ -15,6 +15,7 @@ export type State = {
     selection: number[];
     sections: number[];
     inner?: number;
+    circle?: number;
 };
 
 export const reduceLocalStorage = <T, A>(
@@ -57,6 +58,7 @@ export type Action =
     | { type: 'flip'; x: boolean }
     | { type: 'size'; size: { width: number; height: number } }
     | { type: 'click'; pos: Coord }
+    | { type: 'circle'; circle: number }
     | { type: 'clear' }
     | { type: 'delete' }
     | { type: 'move'; from: Coord; to: Coord }
@@ -75,8 +77,14 @@ const flip = (points: Coord[], size: State['size'], x: boolean) => {
 
 const reduce = (state: State, action: Action): State => {
     switch (action.type) {
-        case 'undo':
-            return { ...state, points: state.points.slice(0, -1) };
+        case 'undo': {
+            const at = state.selection.length
+                ? Math.max(...state.selection)
+                : state.selection.length;
+            const points = state.points.slice();
+            points.splice(at, 1);
+            return { ...state, points, selection: [at - 1] };
+        }
         case 'select':
             return { ...state, selection: action.selection };
         case 'clear':
@@ -87,8 +95,14 @@ const reduce = (state: State, action: Action): State => {
             return { ...state, size: action.size };
         case 'reset':
             return action.state;
-        case 'click':
-            return { ...state, points: state.points.concat([action.pos]) };
+        case 'click': {
+            const at = state.selection.length
+                ? Math.max(...state.selection)
+                : state.selection.length;
+            const points = state.points.slice();
+            points.splice(at + 1, 0, action.pos);
+            return { ...state, points, selection: [at + 1] };
+        }
         case 'sections':
             return { ...state, sections: action.sections };
         case 'delete':
@@ -120,6 +134,8 @@ const reduce = (state: State, action: Action): State => {
                 ...state,
                 points: flip(state.points, state.size, action.x),
             };
+        case 'circle':
+            return { ...state, circle: action.circle };
     }
     const _: never = action;
     return state;
@@ -188,14 +204,10 @@ export const App = () => {
     }
 
     const R = Math.min(W - mx, H - my) / 2;
+    const dr = R / (state.size.width + state.inner);
 
+    const sm = sectionMap(state.sections, state.size, dr, state.inner);
     const gr2 = [];
-    const sm = sectionMap(
-        state.sections,
-        state.size,
-        R / (state.size.width + state.inner),
-        state.inner,
-    );
     for (let y = 0; y < state.size.height; y++) {
         for (let x = 0; x < state.size.width; x++) {
             const { t, r } = sm[`${x},${y}`];
@@ -227,7 +239,7 @@ export const App = () => {
                     }
                   : p,
           )
-        : state.points;
+        : state.points.slice();
 
     const ms = mouse ? snapPos(mouse.pos, dx, dy) : null;
     const mp = ms ? sm[`${state.size.width - 1 - ms.x},${ms.y}`] : null;
@@ -235,6 +247,13 @@ export const App = () => {
         amt >= 0.9
             ? movedPoints
             : movedPoints.slice(0, movedPoints.length * amt);
+
+    if (mode === 'add' && mouse) {
+        const at = state.selection.length
+            ? Math.max(...state.selection)
+            : state.selection.length;
+        showPoints.splice(at + 1, 0, snapPos(mouse.pos, dx, dy));
+    }
 
     const ref = useRef<SVGSVGElement>(null);
 
@@ -252,6 +271,12 @@ export const App = () => {
             const state = st.current;
             if (evt.key === 'Delete' || evt.key === 'Backspace') {
                 dispatch({ type: 'delete' });
+            }
+            if (evt.key === 'Escape') {
+                setMode('move');
+            }
+            if (evt.key === 'z' && (evt.ctrlKey || evt.metaKey)) {
+                dispatch({ type: 'undo' });
             }
         };
         document.addEventListener('keydown', fn);
@@ -278,6 +303,29 @@ export const App = () => {
                 size={state.size}
                 onChange={(size) => dispatch({ type: 'size', size })}
             />
+            <div>
+                <button
+                    onClick={() =>
+                        dispatch({
+                            type: 'circle',
+                            circle: (state.circle ?? 0) - 0.5,
+                        })
+                    }
+                >
+                    -
+                </button>
+                circle {state.circle ?? 0}
+                <button
+                    onClick={() =>
+                        dispatch({
+                            type: 'circle',
+                            circle: (state.circle ?? 0) + 0.5,
+                        })
+                    }
+                >
+                    +
+                </button>
+            </div>
             <SectionsInput state={state} dispatch={dispatch} />
             <div style={{ padding: 8 }}>
                 <CartesianEdits
@@ -299,10 +347,13 @@ export const App = () => {
                     ref={ref}
                     xmlns="http://www.w3.org/2000/svg"
                 >
+                    {/* {gr2} */}
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
                             d={calcPath(showPoints, state.size, sm, mx, my)}
                             strokeWidth={5}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                             stroke="blue"
                             fill="none"
                         />
@@ -312,6 +363,16 @@ export const App = () => {
                                 cy={Math.sin(mp.t) * mp.r + cy}
                                 r={5}
                                 fill="orange"
+                            />
+                        ) : null}
+                        {state.circle ? (
+                            <circle
+                                cx={cx}
+                                cy={cy}
+                                r={dr * (state.circle + state.inner - 1)}
+                                fill="blue"
+                                stroke="blue"
+                                strokeWidth={5}
                             />
                         ) : null}
                     </g>
@@ -340,7 +401,7 @@ export const App = () => {
                 onChange={(evt) => setAmt(+evt.target.value)}
             />
             <div>{JSON.stringify(showPoints)}</div>
-            <ExportButton ref={ref} state={state} />
+            <ExportButton svg={ref} state={state} />
         </div>
     );
 };

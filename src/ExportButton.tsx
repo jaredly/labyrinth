@@ -3,18 +3,18 @@ import { PREFIX, SUFFIX } from './useDropTarget';
 import { State } from './App';
 
 export function ExportButton({
-    ref,
+    svg,
     state,
 }: {
-    ref: React.RefObject<SVGSVGElement>;
+    svg: React.RefObject<SVGSVGElement>;
     state: State;
 }) {
     return (
         <button
             onClick={() => {
-                const svg = ref.current!.outerHTML;
+                const svgText = svg.current!.outerHTML;
                 const blob = new Blob(
-                    [svg + `\n${PREFIX}${JSON.stringify(state)}${SUFFIX}`],
+                    [svgText + `\n${PREFIX}${JSON.stringify(state)}${SUFFIX}`],
                     {
                         type: 'image/svg+xml',
                     },
