@@ -3,6 +3,7 @@ import { Size } from './Size';
 import { calcPath, cart, polarPath } from './calcPath';
 import equal from 'fast-deep-equal';
 import { SectionMap, sectionMap } from './sections';
+import { PREFIX, SUFFIX, useDropStateTarget } from './useDropTarget';
 
 export type Coord = { x: number; y: number };
 
@@ -55,6 +56,7 @@ export type Action =
     | { type: 'size'; size: { width: number; height: number } }
     | { type: 'click'; pos: Coord }
     | { type: 'clear' }
+    | { type: 'reset'; state: State }
     | { type: 'inner'; inner: number }
     | { type: 'undo' };
 
@@ -76,6 +78,8 @@ const reduce = (state: State, action: Action): State => {
             return { ...state, inner: action.inner };
         case 'size':
             return { ...state, size: action.size };
+        case 'reset':
+            return action.state;
         case 'click':
             return { ...state, points: state.points.concat([action.pos]) };
         case 'sections':
@@ -144,14 +148,14 @@ export const App = () => {
     state.inner = state.inner ?? 3;
 
     const sectionDots = [];
-    for (let i = -0.5; i < state.size.height + 0.5; i += 0.5) {
+    for (let i = -0.5; i < state.size.height + 0.5; i += 1) {
         const idx = state.sections.indexOf(i);
         sectionDots.push(
             <circle
                 key={i}
                 cx={-mx / 2}
                 cy={dy * (state.size.height - 1 - i)}
-                r={10}
+                r={4}
                 fill={idx !== -1 ? (idx % 2 === 0 ? 'red' : 'blue') : 'gray'}
                 onClick={(evt) => {
                     evt.stopPropagation();
@@ -161,7 +165,7 @@ export const App = () => {
                         s = s.filter((n) => n !== i);
                     } else {
                         s.push(i);
-                        s.sort();
+                        s.sort((a, b) => a - b);
                     }
                     dispatch({ type: 'sections', sections: s });
                 }}
@@ -210,8 +214,14 @@ export const App = () => {
 
     const ref = useRef<SVGSVGElement>(null);
 
+    const [dragging, callbacks] = useDropStateTarget((state) => {
+        if (state) {
+            dispatch({ type: 'reset', state });
+        }
+    });
+
     return (
-        <div>
+        <div {...callbacks}>
             <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
             <button onClick={() => dispatch({ type: 'undo' })}>Undo</button>
             <button onClick={() => dispatch({ type: 'flip', x: true })}>
@@ -331,7 +341,7 @@ export const App = () => {
                 onClick={() => {
                     const svg = ref.current!.outerHTML;
                     const blob = new Blob(
-                        [svg + `\n<!-- STATE: ${JSON.stringify(state)} -->`],
+                        [svg + `\n${PREFIX}${JSON.stringify(state)}${SUFFIX}`],
                         {
                             type: 'image/svg+xml',
                         },

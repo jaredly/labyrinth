@@ -29,6 +29,11 @@ const ySectionMap = (sections: number[], height: number) => {
             borders.shift();
             centers.shift();
         }
+        if (!centers.length) {
+            console.error('Ran out of borders or corners');
+            map[y] = { offset: 0, section: 0 };
+            continue;
+        }
         const offset = y - centers[0].pos;
         map[y] = { offset, section: centers[0].id };
     }
