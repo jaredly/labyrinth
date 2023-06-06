@@ -57,6 +57,7 @@ export type Action =
     | { type: 'click'; pos: Coord }
     | { type: 'clear' }
     | { type: 'delete' }
+    | { type: 'move'; from: Coord; to: Coord }
     | { type: 'reset'; state: State }
     | { type: 'inner'; inner: number }
     | { type: 'select'; selection: number[] }
@@ -96,6 +97,22 @@ const reduce = (state: State, action: Action): State => {
                     (_, i) => !state.selection.includes(i),
                 ),
             };
+        case 'move': {
+            const diff: Coord = {
+                x: action.to.x - action.from.x,
+                y: action.to.y - action.from.y,
+            };
+            console.log('diff', diff, action.from, action.to);
+            // return state;
+            return {
+                ...state,
+                points: state.points.map(({ x, y }, i) =>
+                    state.selection.includes(i)
+                        ? { x: x + diff.x, y: y + diff.y }
+                        : { x, y },
+                ),
+            };
+        }
         case 'flip':
             return {
                 ...state,
@@ -241,13 +258,27 @@ export const App = () => {
     const cx = (W - mx * 2) / 2;
     const cy = (H - my * 2) / 2;
 
+    const [moving, setMoving] = useState(
+        null as null | { i: number; from: Coord; to: Coord },
+    );
+
+    const movedPoints = moving
+        ? state.points.map((p, i) =>
+              state.selection.includes(i)
+                  ? {
+                        x: moving!.to.x - moving!.from.x + p.x,
+                        y: moving!.to.y - moving!.from.y + p.y,
+                    }
+                  : p,
+          )
+        : state.points;
+
     const ms = mouse ? snapPos(mouse.pos, dx, dy) : null;
     const mp = ms ? sm[`${state.size.width - 1 - ms.x},${ms.y}`] : null;
     const showPoints =
         amt >= 0.9
-            ? state.points
-            : state.points.slice(0, state.points.length * amt);
-    // console.log(mp, mouse);
+            ? movedPoints
+            : movedPoints.slice(0, movedPoints.length * amt);
 
     const ref = useRef<SVGSVGElement>(null);
 
@@ -301,6 +332,24 @@ export const App = () => {
                     onMouseMove={(evt) => {
                         if (mode === 'add') {
                             setMouse({ pos: mousePos(evt, mx, my) });
+                        } else if (moving) {
+                            const pos = snapPos(mousePos(evt, mx, my), dx, dy);
+                            // console.log('moved', pos);
+                            // const current = state.points[moving.i];
+                            // if (pos.x !== current.x || pos.y !== current.y) {
+                            //     dispatch({ type: 'move', i: moving.i, pos });
+                            // }
+                            setMoving((m) => (m ? { ...m, to: pos } : m));
+                        }
+                    }}
+                    onMouseUp={() => {
+                        if (moving) {
+                            setMoving(null);
+                            dispatch({
+                                type: 'move',
+                                from: moving.from,
+                                to: moving.to,
+                            });
                         }
                     }}
                     onClick={(evt) => {
@@ -327,7 +376,7 @@ export const App = () => {
                         <polyline
                             stroke="blue"
                             strokeWidth={10}
-                            points={state.points
+                            points={movedPoints
                                 .concat(
                                     mode === 'add' && mouse
                                         ? [snapPos(mouse.pos, dx, dy)]
@@ -351,7 +400,7 @@ export const App = () => {
                         ))}
                         {mode === 'move' ? (
                             <g>
-                                {state.points.map(({ x, y }, i) => (
+                                {movedPoints.map(({ x, y }, i) => (
                                     <circle
                                         key={i}
                                         cx={x * dx}
@@ -362,6 +411,20 @@ export const App = () => {
                                                 ? 'green'
                                                 : 'blue'
                                         }
+                                        onMouseDown={() => {
+                                            if (!state.selection.includes(i)) {
+                                                dispatch({
+                                                    type: 'select',
+                                                    selection: [i],
+                                                });
+                                            }
+                                            const pos = { x, y };
+                                            setMoving({
+                                                i,
+                                                from: pos,
+                                                to: pos,
+                                            });
+                                        }}
                                         onClick={() => {
                                             dispatch({
                                                 type: 'select',
@@ -381,7 +444,6 @@ export const App = () => {
                     ref={ref}
                     xmlns="http://www.w3.org/2000/svg"
                 >
-                    {/* {gr2} */}
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
                             d={calcPath(showPoints, state.size, sm, mx, my)}
@@ -397,7 +459,6 @@ export const App = () => {
                                 fill="orange"
                             />
                         ) : null}
-                        {/* {debugPoints(showPoints, sm, cx, cy)} */}
                     </g>
                 </svg>
             </div>
@@ -529,7 +590,7 @@ function SectionsInput({
 }
 
 function mousePos(
-    evt: React.MouseEvent<SVGSVGElement, MouseEvent>,
+    evt: React.MouseEvent<any, MouseEvent>,
     mx: number,
     my: number,
 ) {
