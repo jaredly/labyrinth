@@ -1,9 +1,11 @@
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { Size } from './Size';
 import { calcPath, cart, polarPath } from './calcPath';
-import equal from 'fast-deep-equal';
 import { SectionMap, sectionMap } from './sections';
-import { PREFIX, SUFFIX, useDropStateTarget } from './useDropTarget';
+import { useDropStateTarget } from './useDropTarget';
+import { SectionsInput } from './SectionsInput';
+import { CartesianEdits } from './CartesianEdits';
+import { ExportButton } from './ExportButton';
 
 export type Coord = { x: number; y: number };
 
@@ -126,7 +128,7 @@ const reduce = (state: State, action: Action): State => {
 export const W = 800 / 2;
 export const H = 800 / 2;
 
-const Grid = ({
+export const Grid = ({
     size,
     dx,
     dy,
@@ -152,13 +154,18 @@ const Grid = ({
     return <g>{points}</g>;
 };
 
-type Mouse = { pos: Coord; drag?: Coord | null };
+export type Mouse = { pos: Coord; drag?: Coord | null };
 
 const snap = (m: number, dm: number) => Math.round(m / dm);
-const snapPos = ({ x, y }: Coord, dx: number, dy: number): Coord => ({
+export const snapPos = ({ x, y }: Coord, dx: number, dy: number): Coord => ({
     x: snap(x, dx),
     y: snap(y, dy),
 });
+
+export const mx = 60; //dx / 2;
+export const my = 60; //dy / 2;
+const cx = (W - mx * 2) / 2;
+const cy = (H - my * 2) / 2;
 
 export const App = () => {
     const [state, dispatch] = reduceLocalStorage(
@@ -168,42 +175,14 @@ export const App = () => {
     );
 
     let [mouse, setMouse] = useState(null as Mouse | null);
-    const mx = 60; //dx / 2;
-    const my = 60; //dy / 2;
-    const dx = (W - mx * 2) / (state.size.width - 1);
-    const dy = (H - my * 2) / (state.size.height - 1);
     const [amt, setAmt] = useLocalStorage('lb-amt', () => 0.1);
 
     state.inner = state.inner ?? 3;
+    const dx = (W - mx * 2) / (state.size.width - 1);
+    const dy = (H - my * 2) / (state.size.height - 1);
 
     const [mode, setMode] = useState('add' as 'add' | 'move');
 
-    const sectionDots = [];
-    for (let i = -0.5; i < state.size.height + 0.5; i += 1) {
-        const idx = state.sections.indexOf(i);
-        sectionDots.push(
-            <circle
-                key={i}
-                cx={-mx / 2}
-                cy={dy * (state.size.height - 1 - i)}
-                r={4}
-                fill={idx !== -1 ? (idx % 2 === 0 ? 'red' : 'blue') : 'gray'}
-                onClick={(evt) => {
-                    evt.stopPropagation();
-                    evt.preventDefault();
-                    let s = state.sections.slice();
-                    if (s.includes(i)) {
-                        s = s.filter((n) => n !== i);
-                    } else {
-                        s.push(i);
-                        s.sort((a, b) => a - b);
-                    }
-                    dispatch({ type: 'sections', sections: s });
-                }}
-                style={{ cursor: 'pointer' }}
-            />,
-        );
-    }
     if ((mouse?.pos.x ?? 0) < 0) {
         mouse = null;
     }
@@ -232,31 +211,8 @@ export const App = () => {
         }
     }
 
-    const crossLines: JSX.Element[] = [];
-    state.sections.forEach((s, i) => {
-        s = state.size.height - 1 - s;
-        if (i % 2 === 1) {
-            for (let x = 0; x < state.size.width; x++) {
-                crossLines.push(
-                    <line
-                        key={`${i}:${x}`}
-                        x1={x * dx}
-                        x2={x * dx}
-                        y1={(s - 0.5) * dy}
-                        y2={(s + 0.5) * dy}
-                        stroke="gray"
-                        strokeWidth={2}
-                    />,
-                );
-            }
-        }
-    });
-
     // const mx = 30; //dx / 2;
     // const my = 30; //dy / 2;
-
-    const cx = (W - mx * 2) / 2;
-    const cy = (H - my * 2) / 2;
 
     const [moving, setMoving] = useState(
         null as null | { i: number; from: Coord; to: Coord },
@@ -324,119 +280,18 @@ export const App = () => {
             />
             <SectionsInput state={state} dispatch={dispatch} />
             <div style={{ padding: 8 }}>
-                <svg
-                    style={{ border: '1px solid magenta' }}
-                    onMouseLeave={() => setMouse(null)}
-                    width={W}
-                    height={H}
-                    onMouseMove={(evt) => {
-                        if (mode === 'add') {
-                            setMouse({ pos: mousePos(evt, mx, my) });
-                        } else if (moving) {
-                            const pos = snapPos(mousePos(evt, mx, my), dx, dy);
-                            // console.log('moved', pos);
-                            // const current = state.points[moving.i];
-                            // if (pos.x !== current.x || pos.y !== current.y) {
-                            //     dispatch({ type: 'move', i: moving.i, pos });
-                            // }
-                            setMoving((m) => (m ? { ...m, to: pos } : m));
-                        }
-                    }}
-                    onMouseUp={() => {
-                        if (moving) {
-                            setMoving(null);
-                            dispatch({
-                                type: 'move',
-                                from: moving.from,
-                                to: moving.to,
-                            });
-                        }
-                    }}
-                    onClick={(evt) => {
-                        if (mode === 'add') {
-                            dispatch({
-                                type: 'click',
-                                pos: snapPos(mousePos(evt, mx, my), dx, dy),
-                            });
-                        }
-                    }}
-                >
-                    <g transform={`translate(${mx}, ${my})`}>
-                        {crossLines}
-                        <Grid size={state.size} dx={dx} dy={dy} />
-                        {sectionDots}
-                        {mouse ? (
-                            <circle
-                                cx={mouse.pos.x}
-                                cy={mouse.pos.y}
-                                r={10}
-                                fill="#aaa"
-                            />
-                        ) : null}
-                        <polyline
-                            stroke="blue"
-                            strokeWidth={10}
-                            points={movedPoints
-                                .concat(
-                                    mode === 'add' && mouse
-                                        ? [snapPos(mouse.pos, dx, dy)]
-                                        : [],
-                                )
-                                .map((p) => `${p.x * dx},${p.y * dy}`)
-                                .join(' ')}
-                            fill="none"
-                        />
-                        {state.sections.map((s, i) => (
-                            <line
-                                key={i}
-                                x1={0}
-                                x2={(state.size.width - 1) * dx}
-                                y1={(state.size.height - 1 - s) * dy}
-                                y2={(state.size.height - 1 - s) * dy}
-                                stroke={i % 2 === 0 ? 'red' : 'blue'}
-                                strokeDasharray={i % 2 === 0 ? '' : '4 4'}
-                                strokeWidth={2}
-                            />
-                        ))}
-                        {mode === 'move' ? (
-                            <g>
-                                {movedPoints.map(({ x, y }, i) => (
-                                    <circle
-                                        key={i}
-                                        cx={x * dx}
-                                        cy={y * dy}
-                                        r={10}
-                                        fill={
-                                            state.selection.includes(i)
-                                                ? 'green'
-                                                : 'blue'
-                                        }
-                                        onMouseDown={() => {
-                                            if (!state.selection.includes(i)) {
-                                                dispatch({
-                                                    type: 'select',
-                                                    selection: [i],
-                                                });
-                                            }
-                                            const pos = { x, y };
-                                            setMoving({
-                                                i,
-                                                from: pos,
-                                                to: pos,
-                                            });
-                                        }}
-                                        onClick={() => {
-                                            dispatch({
-                                                type: 'select',
-                                                selection: [i],
-                                            });
-                                        }}
-                                    />
-                                ))}
-                            </g>
-                        ) : null}
-                    </g>
-                </svg>
+                <CartesianEdits
+                    dx={dx}
+                    dy={dy}
+                    mode={mode}
+                    moving={moving}
+                    setMouse={setMouse}
+                    setMoving={setMoving}
+                    movedPoints={movedPoints}
+                    dispatch={dispatch}
+                    state={state}
+                    mouse={mouse}
+                />
                 <svg
                     height={H}
                     width={W}
@@ -485,27 +340,7 @@ export const App = () => {
                 onChange={(evt) => setAmt(+evt.target.value)}
             />
             <div>{JSON.stringify(showPoints)}</div>
-            <button
-                onClick={() => {
-                    const svg = ref.current!.outerHTML;
-                    const blob = new Blob(
-                        [svg + `\n${PREFIX}${JSON.stringify(state)}${SUFFIX}`],
-                        {
-                            type: 'image/svg+xml',
-                        },
-                    );
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `labyrinth-${Date.now()}.svg`;
-                    a.click();
-                    setTimeout(() => {
-                        URL.revokeObjectURL(url);
-                    }, 100);
-                }}
-            >
-                Export
-            </button>
+            <ExportButton ref={ref} state={state} />
         </div>
     );
 };
@@ -541,55 +376,7 @@ function debugPoints(
     });
 }
 
-function SectionsInput({
-    state,
-    dispatch,
-}: {
-    state: State;
-    dispatch: React.Dispatch<Action>;
-}) {
-    const [v, setV] = useState(state.sections!.map((m) => m + '').join(' '));
-    let parsed = null as null | number[];
-    const values = v.split(' ').map((m) => parseFloat(m));
-    if (values.length && values.every((m) => !isNaN(m))) {
-        parsed = values;
-    }
-    return (
-        <div>
-            <input value={v} onChange={(evt) => setV(evt.target.value)} />
-            <button
-                disabled={!parsed || equal(parsed, state.sections)}
-                onClick={() =>
-                    dispatch({ type: 'sections', sections: parsed! })
-                }
-            >
-                Set
-            </button>
-            <button
-                onClick={() =>
-                    dispatch({
-                        type: 'sections',
-                        sections: state.sections.map((s) => s - 1),
-                    })
-                }
-            >
-                &lt;-
-            </button>
-            <button
-                onClick={() =>
-                    dispatch({
-                        type: 'sections',
-                        sections: state.sections.map((s) => s + 1),
-                    })
-                }
-            >
-                -&gt;
-            </button>
-        </div>
-    );
-}
-
-function mousePos(
+export function mousePos(
     evt: React.MouseEvent<any, MouseEvent>,
     mx: number,
     my: number,
