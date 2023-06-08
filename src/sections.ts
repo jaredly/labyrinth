@@ -1,5 +1,5 @@
 import { Coord, State } from './App';
-import { normalizeAngle } from './calcPath';
+import { angleBetween, normalizeAngle } from './calcPath';
 
 /*
 from the sections
@@ -63,15 +63,11 @@ export const sectionMap = (
     const mapping: SectionMap = {};
     const map = ySectionMap(sections, size.height);
     const numSections = (sections.length - 1) / 2;
-    // console.log('section ys', map);
     for (let y = 0; y < size.height; y++) {
         const { offset, section } = map[y];
         for (let x = 0; x < size.width; x++) {
             const r = (r0 + x) * dr;
             let t = (section / numSections) * Math.PI * 2;
-
-            // const t2 = t + Math.PI / 2;
-            // const r2 = offset * dr;
 
             t += (offset * dr) / r;
 
@@ -82,11 +78,42 @@ export const sectionMap = (
                 y,
                 offset,
                 section,
-                // x: Math.cos(t) * r, // + Math.cos(t2) * r2,
-                // y: Math.sin(t) * r, // + Math.sin(t2) * r2,
             };
         }
     }
-    // console.log('yay', mapping);
     return mapping;
+};
+
+export const pointDistance = (
+    points: Coord[],
+    sm: SectionMap,
+    dr: number,
+    size: State['size'],
+) => {
+    let dist = 0;
+    return points
+        .map(({ x, y }) => ({ x: size.width - 1 - x, y })) // : size.height - 1 - y}))
+
+        .map((p, i) => {
+            if (i === 0) {
+                return 0;
+            }
+            const prev = points[i - 1];
+            const pp = sm[`${prev.x},${prev.y}`];
+            const sp = sm[`${p.x},${p.y}`];
+            if (!sp || !pp) {
+                return dist;
+            }
+
+            if (pp.y === sp.y) {
+                dist += Math.abs(pp.x - sp.x) * dr;
+                return dist;
+            }
+
+            const cw = p.y > prev.y;
+            const delta = angleBetween(sp.t, pp.t, cw);
+
+            dist += delta * sp.r;
+            return dist;
+        });
 };

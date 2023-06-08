@@ -10,11 +10,14 @@ export const showColor = (
     sectionMap: SectionMap,
     mx: number,
     my: number,
+    dists: number[],
+    dr: number,
 ) => {
     const { paths, polar } = calcPathParts(points, size, sectionMap, mx, my);
 
     const cx = (W - mx * 2) / 2;
     const cy = (H - my * 2) / 2;
+    const max = dists[dists.length - 1];
 
     return paths.map((item, i): JSX.Element | null => {
         if (i === 0) {
@@ -26,10 +29,11 @@ export const showColor = (
         return (
             <path
                 d={`M${x} ${y} ${item}`}
-                strokeWidth={8}
+                strokeWidth={dr}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                stroke={rainbow(i / points.length)}
+                stroke={rainbow(dists[i] / max)}
+                // stroke={rainbow(i / points.length)}
                 fill="none"
             />
         );
@@ -45,6 +49,7 @@ export const calcPath = (
 ): string => {
     return calcPathParts(points, size, sectionMap, mx, my).paths.join(' ');
 };
+
 export const calcPathParts = (
     points: State['points'],
     size: State['size'],

@@ -4,3 +4,4 @@
 - [ ] select a rect pls
 - [x] export : show the cartesian dealiwaps
 - [x] rainbow color the labyrinth for distance
+  - betterrr rainbow?

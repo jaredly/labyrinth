@@ -1,7 +1,7 @@
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { Size } from './Size';
-import { calcPath, cart, polarPath, showColor } from './calcPath';
-import { SectionMap, sectionMap } from './sections';
+import { calcPath, cart, polarPath, rainbow, showColor } from './calcPath';
+import { SectionMap, pointDistance, sectionMap } from './sections';
 import { useDropStateTarget } from './useDropTarget';
 import { SectionsInput } from './SectionsInput';
 import { CartesianEdits } from './CartesianEdits';
@@ -101,7 +101,11 @@ const reduce = (state: State, action: Action): State => {
                 : state.selection.length;
             const points = state.points.slice();
             points.splice(at + 1, 0, action.pos);
-            return { ...state, points, selection: [at + 1] };
+            return {
+                ...state,
+                points,
+                selection: [state.selection.length ? at + 1 : at],
+            };
         }
         case 'sections':
             return { ...state, sections: action.sections };
@@ -159,6 +163,7 @@ export const Grid = ({
             points.push(
                 <circle
                     key={`${x}:${y}`}
+                    opacity={0.4}
                     cx={dx * x}
                     cy={dy * y}
                     r={4}
@@ -199,7 +204,7 @@ export const App = () => {
     const dx = (W - mx * 2) / (state.size.width - 1);
     const dy = (H - my * 2) / (state.size.height - 1);
 
-    const [mode, setMode] = useState('add' as 'add' | 'move');
+    const [mode, setMode] = useState('move' as 'add' | 'move');
 
     if ((mouse?.pos.x ?? 0) < 0) {
         mouse = null;
@@ -225,8 +230,7 @@ export const App = () => {
         }
     }
 
-    // const mx = 30; //dx / 2;
-    // const my = 30; //dy / 2;
+    const dists = pointDistance(state.points, sm, dr, state.size);
 
     const [moving, setMoving] = useState(
         null as null | { i: number; from: Coord; to: Coord },
@@ -366,18 +370,42 @@ export const App = () => {
                 >
                     {/* {gr2} */}
                     <g transform={`translate(${mx}, ${my})`}>
-                        {color
-                            ? showColor(showPoints, state.size, sm, mx, my)
-                            : null}
                         <path
                             d={calcPath(showPoints, state.size, sm, mx, my)}
-                            strokeWidth={color ? 2 : 5}
+                            strokeWidth={dr * 1.5}
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             stroke="blue"
-                            // opacity={color ? 0.2 : 1}
                             fill="none"
                         />
+                        {state.circle ? (
+                            <circle
+                                cx={cx}
+                                cy={cy}
+                                r={dr * (state.circle + state.inner - 1) * 2}
+                                fill="blue"
+                            />
+                        ) : null}
+                        {color ? (
+                            showColor(
+                                showPoints,
+                                state.size,
+                                sm,
+                                mx,
+                                my,
+                                dists,
+                                dr - 2,
+                            )
+                        ) : (
+                            <path
+                                d={calcPath(showPoints, state.size, sm, mx, my)}
+                                strokeWidth={dr - 2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                stroke="white"
+                                fill="none"
+                            />
+                        )}
                         {mp ? (
                             <circle
                                 cx={Math.cos(mp.t) * mp.r + cx}
@@ -391,9 +419,7 @@ export const App = () => {
                                 cx={cx}
                                 cy={cy}
                                 r={dr * (state.circle + state.inner - 1)}
-                                fill="blue"
-                                stroke="blue"
-                                strokeWidth={5}
+                                fill={color ? rainbow(1) : 'white'}
                             />
                         ) : null}
                     </g>

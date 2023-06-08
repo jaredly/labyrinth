@@ -154,25 +154,29 @@ export function CartesianEdits({
                     stroke="blue"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth={color ? 2 : 8}
+                    strokeWidth={color ? 2 : 5}
                     points={movedPoints
                         .map((p) => `${p.x * dx},${p.y * dy}`)
                         .join(' ')}
                     fill="none"
                 />
-                <rect
-                    x={movedPoints[0].x * dx - 8}
-                    y={movedPoints[0].y * dy - 8}
-                    width={16}
-                    height={16}
-                    fill="blue"
-                />
-                <circle
-                    cx={movedPoints[movedPoints.length - 1].x * dx}
-                    cy={movedPoints[movedPoints.length - 1].y * dy}
-                    r={8}
-                    fill="blue"
-                />
+                {movedPoints.length ? (
+                    <rect
+                        x={movedPoints[0].x * dx - 8}
+                        y={movedPoints[0].y * dy - 8}
+                        width={16}
+                        height={16}
+                        fill="blue"
+                    />
+                ) : null}
+                {movedPoints.length ? (
+                    <circle
+                        cx={movedPoints[movedPoints.length - 1].x * dx}
+                        cy={movedPoints[movedPoints.length - 1].y * dy}
+                        r={8}
+                        fill="blue"
+                    />
+                ) : null}
             </g>
             <g transform={`translate(${mx}, ${my})`}>
                 {state.sections.map((s, i) => (
@@ -194,7 +198,7 @@ export function CartesianEdits({
                                 key={i}
                                 cx={x * dx}
                                 cy={y * dy}
-                                r={7}
+                                r={4}
                                 fill={
                                     state.selection.includes(i)
                                         ? 'green'
