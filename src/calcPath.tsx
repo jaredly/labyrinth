@@ -1,7 +1,40 @@
+import React from 'react';
 import { State, W, H, Coord } from './App';
 import { SectionMap } from './sections';
 
 const closeEnough = (a: number, b: number) => Math.abs(a - b) < 0.001;
+
+export const showColor = (
+    points: State['points'],
+    size: State['size'],
+    sectionMap: SectionMap,
+    mx: number,
+    my: number,
+) => {
+    const { paths, polar } = calcPathParts(points, size, sectionMap, mx, my);
+
+    const cx = (W - mx * 2) / 2;
+    const cy = (H - my * 2) / 2;
+
+    return paths.map((item, i): JSX.Element | null => {
+        if (i === 0) {
+            return null;
+        }
+        const pos = polar[i - 1];
+        const x = Math.cos(pos.t) * pos.r + cx;
+        const y = Math.sin(pos.t) * pos.r + cy;
+        return (
+            <path
+                d={`M${x} ${y} ${item}`}
+                strokeWidth={8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                stroke={rainbow(i / points.length)}
+                fill="none"
+            />
+        );
+    });
+};
 
 export const calcPath = (
     points: State['points'],
@@ -10,6 +43,15 @@ export const calcPath = (
     mx: number,
     my: number,
 ): string => {
+    return calcPathParts(points, size, sectionMap, mx, my).paths.join(' ');
+};
+export const calcPathParts = (
+    points: State['points'],
+    size: State['size'],
+    sectionMap: SectionMap,
+    mx: number,
+    my: number,
+): { paths: string[]; polar: (typeof sectionMap)[''][] } => {
     const polar = points
         .map(({ x, y }) => ({ x: size.width - 1 - x, y })) // : size.height - 1 - y}))
         .map(({ x, y }) => sectionMap[`${x},${y}`])
@@ -20,30 +62,29 @@ export const calcPath = (
     const cy = (H - my * 2) / 2;
     // const R = Math.min(cx, cy) * 0.8;
 
-    return polar
-        .map((pos, i) => {
-            // const {t, r} = sectionMap[`${pos.x},${pos.y}`]
-            const x = Math.cos(pos.t) * pos.r + cx;
-            const y = Math.sin(pos.t) * pos.r + cy;
-            // const { x, y } = cart(t, r, R, cx, cy);
-            if (i == 0) {
-                return `M${x} ${y}`;
-            }
-            const prev = polar[i - 1];
-            if (prev.y === pos.y) {
-                return `L${x} ${y}`;
-            }
-            const cw = pos.y > prev.y;
+    const paths = polar.map((pos, i) => {
+        // const {t, r} = sectionMap[`${pos.x},${pos.y}`]
+        const x = Math.cos(pos.t) * pos.r + cx;
+        const y = Math.sin(pos.t) * pos.r + cy;
+        // const { x, y } = cart(t, r, R, cx, cy);
+        if (i == 0) {
+            return `M${x} ${y}`;
+        }
+        const prev = polar[i - 1];
+        if (prev.y === pos.y) {
+            return `L${x} ${y}`;
+        }
+        const cw = pos.y > prev.y;
 
-            const delta = angleBetween(pos.t, prev.t, cw);
+        const delta = angleBetween(pos.t, prev.t, cw);
 
-            const largeArcFlag = Math.abs(delta) < Math.PI;
-            const sweepFlag = cw; // t < prev.t;
-            return `A ${pos.r} ${pos.r} 0 ${largeArcFlag ? '1' : '0'} ${
-                sweepFlag ? '1' : '0'
-            } ${x} ${y}`;
-        })
-        .join(' ');
+        const largeArcFlag = Math.abs(delta) < Math.PI;
+        const sweepFlag = cw; // t < prev.t;
+        return `A ${pos.r} ${pos.r} 0 ${largeArcFlag ? '1' : '0'} ${
+            sweepFlag ? '1' : '0'
+        } ${x} ${y}`;
+    });
+    return { polar, paths };
 };
 
 export const epsilon = 0.000001;
@@ -86,6 +127,10 @@ export const angleBetween = (
     }
     return res;
 };
+
+export function rainbow(percent: number): string | undefined {
+    return `hsl(${(percent * 180).toFixed(0)}, 100%, 50%)`;
+}
 
 export function cart(t: number, r: number, R: number, cx: number, cy: number) {
     const x = cx + Math.cos(t) * r * R;

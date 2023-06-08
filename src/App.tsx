@@ -1,6 +1,6 @@
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { Size } from './Size';
-import { calcPath, cart, polarPath } from './calcPath';
+import { calcPath, cart, polarPath, showColor } from './calcPath';
 import { SectionMap, sectionMap } from './sections';
 import { useDropStateTarget } from './useDropTarget';
 import { SectionsInput } from './SectionsInput';
@@ -108,7 +108,7 @@ const reduce = (state: State, action: Action): State => {
         case 'delete':
             return {
                 ...state,
-                selection: [],
+                selection: [Math.max(0, Math.min(...state.selection) - 1)],
                 points: state.points.filter(
                     (_, i) => !state.selection.includes(i),
                 ),
@@ -190,6 +190,8 @@ export const App = () => {
         reduce,
     );
 
+    const [color, setColor] = useState(false);
+
     let [mouse, setMouse] = useState(null as Mouse | null);
     const [amt, setAmt] = useLocalStorage('lb-amt', () => 0.1);
 
@@ -256,6 +258,7 @@ export const App = () => {
     }
 
     const ref = useRef<SVGSVGElement>(null);
+    const cref = useRef<SVGSVGElement>(null);
 
     const [dragging, callbacks] = useDropStateTarget((state) => {
         if (state) {
@@ -278,10 +281,14 @@ export const App = () => {
             if (evt.key === 'z' && (evt.ctrlKey || evt.metaKey)) {
                 dispatch({ type: 'undo' });
             }
-            if (evt.key === 'a' && evt.metaKey) {
-                evt.preventDefault();
-                const all = st.current.points.map((p, i) => i);
-                dispatch({ type: 'select', selection: all });
+            if (evt.key === 'a') {
+                if (evt.metaKey) {
+                    evt.preventDefault();
+                    const all = st.current.points.map((p, i) => i);
+                    dispatch({ type: 'select', selection: all });
+                } else {
+                    setMode('add');
+                }
             }
         };
         document.addEventListener('keydown', fn);
@@ -303,6 +310,9 @@ export const App = () => {
             </button>
             <button onClick={() => dispatch({ type: 'flip', x: false })}>
                 Flip Y
+            </button>
+            <button onClick={() => setColor(!color)}>
+                {color ? 'Hide Color' : 'Show Color'}
             </button>
             <Size
                 size={state.size}
@@ -344,6 +354,8 @@ export const App = () => {
                     dispatch={dispatch}
                     state={state}
                     mouse={mouse}
+                    cref={cref}
+                    color={color}
                 />
                 <svg
                     height={H}
@@ -354,12 +366,16 @@ export const App = () => {
                 >
                     {/* {gr2} */}
                     <g transform={`translate(${mx}, ${my})`}>
+                        {color
+                            ? showColor(showPoints, state.size, sm, mx, my)
+                            : null}
                         <path
                             d={calcPath(showPoints, state.size, sm, mx, my)}
-                            strokeWidth={5}
+                            strokeWidth={color ? 2 : 5}
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             stroke="blue"
+                            // opacity={color ? 0.2 : 1}
                             fill="none"
                         />
                         {mp ? (
@@ -406,7 +422,7 @@ export const App = () => {
                 onChange={(evt) => setAmt(+evt.target.value)}
             />
             <div>{JSON.stringify(showPoints)}</div>
-            <ExportButton svg={ref} state={state} />
+            <ExportButton csvg={cref} svg={ref} state={state} />
         </div>
     );
 };

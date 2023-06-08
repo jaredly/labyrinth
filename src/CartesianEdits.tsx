@@ -12,6 +12,7 @@ import {
     snapPos,
     Grid,
 } from './App';
+import { rainbow } from './calcPath';
 
 export function CartesianEdits({
     setMouse,
@@ -24,9 +25,13 @@ export function CartesianEdits({
     state,
     mouse,
     movedPoints,
+    cref,
+    color,
 }: {
     setMouse: React.Dispatch<React.SetStateAction<Mouse | null>>;
+    cref: React.RefObject<SVGSVGElement>;
     mode: string;
+    color: boolean;
     moving: { i: number; from: Coord; to: Coord } | null;
     dx: number;
     dy: number;
@@ -127,27 +132,49 @@ export function CartesianEdits({
                 {crossLines}
                 <Grid size={state.size} dx={dx} dy={dy} />
                 {sectionDots}
-                {mouse ? (
-                    <circle
-                        cx={mouse.pos.x}
-                        cy={mouse.pos.y}
-                        r={10}
-                        fill="#aaa"
-                    />
-                ) : null}
+            </g>
+            <g transform={`translate(${mx}, ${my})`} ref={cref}>
+                {color
+                    ? movedPoints.map((p, i) =>
+                          i === 0 ? null : (
+                              <line
+                                  x1={movedPoints[i - 1].x * dx}
+                                  y1={movedPoints[i - 1].y * dy}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  x2={p.x * dx}
+                                  y2={p.y * dy}
+                                  stroke={rainbow(i / movedPoints.length)}
+                                  strokeWidth={8}
+                              />
+                          ),
+                      )
+                    : null}
                 <polyline
                     stroke="blue"
-                    strokeWidth={10}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={color ? 2 : 8}
                     points={movedPoints
-                        // .concat(
-                        //     mode === 'add' && mouse
-                        //         ? [snapPos(mouse.pos, dx, dy)]
-                        //         : [],
-                        // )
                         .map((p) => `${p.x * dx},${p.y * dy}`)
                         .join(' ')}
                     fill="none"
                 />
+                <rect
+                    x={movedPoints[0].x * dx - 8}
+                    y={movedPoints[0].y * dy - 8}
+                    width={16}
+                    height={16}
+                    fill="blue"
+                />
+                <circle
+                    cx={movedPoints[movedPoints.length - 1].x * dx}
+                    cy={movedPoints[movedPoints.length - 1].y * dy}
+                    r={8}
+                    fill="blue"
+                />
+            </g>
+            <g transform={`translate(${mx}, ${my})`}>
                 {state.sections.map((s, i) => (
                     <line
                         key={i}
@@ -167,7 +194,7 @@ export function CartesianEdits({
                                 key={i}
                                 cx={x * dx}
                                 cy={y * dy}
-                                r={10}
+                                r={7}
                                 fill={
                                     state.selection.includes(i)
                                         ? 'green'
