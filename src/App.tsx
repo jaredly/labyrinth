@@ -275,6 +275,9 @@ export const App = () => {
 
     useEffect(() => {
         const fn = (evt: KeyboardEvent) => {
+            if (document.activeElement !== document.body) {
+                return;
+            }
             const state = st.current;
             if (evt.key === 'Delete' || evt.key === 'Backspace') {
                 dispatch({ type: 'delete' });
@@ -394,12 +397,12 @@ export const App = () => {
                                 mx,
                                 my,
                                 dists,
-                                dr - 2,
+                                dr - 4,
                             )
                         ) : (
                             <path
                                 d={calcPath(showPoints, state.size, sm, mx, my)}
-                                strokeWidth={dr - 2}
+                                strokeWidth={dr - 4}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 stroke="white"
