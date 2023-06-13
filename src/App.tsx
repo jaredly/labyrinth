@@ -2,7 +2,7 @@ import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { Size } from './Size';
 import { calcPath, cart, polarPath, rainbow, showColor } from './calcPath';
 import { SectionMap, pointDistance, sectionMap } from './sections';
-import { useDropStateTarget } from './useDropTarget';
+import { migrateState, useDropStateTarget } from './useDropTarget';
 import { SectionsInput } from './SectionsInput';
 import { CartesianEdits } from './CartesianEdits';
 import { ExportButton } from './ExportButton';
@@ -24,9 +24,10 @@ export const reduceLocalStorage = <T, A>(
     key: string,
     initial: () => T,
     reduce: (state: T, action: A) => T,
+    migrate: (state: any) => T = (x) => x,
 ) => {
     const [state, dispatch] = React.useReducer(reduce, null, () =>
-        localStorage[key] ? JSON.parse(localStorage[key]) : initial(),
+        localStorage[key] ? migrate(JSON.parse(localStorage[key])) : initial(),
     );
     React.useEffect(() => {
         if (state != null) {
@@ -62,7 +63,7 @@ export type Action =
     | { type: 'size'; size: { width: number; height: number } }
     // | { type: 'click'; pos: Coord }
     | { type: 'circle'; circle: number }
-    // | { type: 'clear' }
+    | { type: 'clear' }
     // | { type: 'delete' }
     // | { type: 'move'; from: Coord; to: Coord }
     | { type: 'reset'; state: State }
@@ -90,8 +91,8 @@ const reduce = (state: State, action: Action): State => {
         // }
         case 'select':
             return { ...state, selection: action.selection };
-        // case 'clear':
-        //     return { ...state, points: [] };
+        case 'clear':
+            return { ...state, pairs: [] };
         case 'inner':
             return { ...state, inner: action.inner };
         case 'size':
@@ -196,6 +197,7 @@ export const App = () => {
         'labyrinth',
         () => initialState,
         reduce,
+        migrateState,
     );
 
     const [color, setColor] = useState(false);
@@ -233,6 +235,19 @@ export const App = () => {
         }
     }
 
+    const allPairs = state.pairs.slice();
+    state.sections.forEach((s, i) => {
+        if (i % 2 === 1) {
+            s = state.size.height - 1 - s;
+            for (let x = 0; x < state.size.width; x++) {
+                allPairs.push([
+                    { x, y: s - 0.5 },
+                    { x, y: s + 0.5 },
+                ]);
+            }
+        }
+    });
+
     const points: Coord[] = [];
 
     const dists = pointDistance(points, sm, dr, state.size);
@@ -254,17 +269,17 @@ export const App = () => {
 
     const ms = mouse ? snapPos(mouse.pos, dx, dy) : null;
     const mp = ms ? sm[`${state.size.width - 1 - ms.x},${ms.y}`] : null;
-    const showPoints =
-        amt >= 0.9
-            ? movedPoints
-            : movedPoints.slice(0, movedPoints.length * amt);
+    // const showPoints =
+    //     amt >= 0.9
+    //         ? movedPoints
+    //         : movedPoints.slice(0, movedPoints.length * amt);
 
-    if (mode === 'add' && mouse) {
-        const at = state.selection.length
-            ? Math.max(...state.selection)
-            : state.selection.length;
-        showPoints.splice(at + 1, 0, snapPos(mouse.pos, dx, dy));
-    }
+    // if (mode === 'add' && mouse) {
+    //     const at = state.selection.length
+    //         ? Math.max(...state.selection)
+    //         : state.selection.length;
+    //     showPoints.splice(at + 1, 0, snapPos(mouse.pos, dx, dy));
+    // }
 
     const ref = useRef<SVGSVGElement>(null);
     const cref = useRef<SVGSVGElement>(null);
@@ -315,8 +330,8 @@ export const App = () => {
             <button disabled={mode === 'add'} onClick={() => setMode('add')}>
                 Add
             </button>
-            {/* <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
-            <button onClick={() => dispatch({ type: 'undo' })}>Undo</button>
+            <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
+            {/* <button onClick={() => dispatch({ type: 'undo' })}>Undo</button>
             <button onClick={() => dispatch({ type: 'flip', x: true })}>
                 Flip X
             </button>
@@ -379,7 +394,7 @@ export const App = () => {
                     {/* {gr2} */}
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
-                            d={calcPath(showPoints, state.size, sm, mx, my)}
+                            d={calcPath(allPairs, state.size, sm, mx, my)}
                             strokeWidth={dr * 1.5}
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -396,7 +411,7 @@ export const App = () => {
                         ) : null}
                         {color ? (
                             showColor(
-                                showPoints,
+                                movedPoints,
                                 state.size,
                                 sm,
                                 mx,
@@ -406,7 +421,7 @@ export const App = () => {
                             )
                         ) : (
                             <path
-                                d={calcPath(showPoints, state.size, sm, mx, my)}
+                                d={calcPath(allPairs, state.size, sm, mx, my)}
                                 strokeWidth={dr - 4}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -455,7 +470,7 @@ export const App = () => {
                 value={amt}
                 onChange={(evt) => setAmt(+evt.target.value)}
             /> */}
-            <div>{JSON.stringify(showPoints)}</div>
+            {/* <div>{JSON.stringify(showPoints)}</div> */}
             <ExportButton csvg={cref} svg={ref} state={state} />
         </div>
     );
