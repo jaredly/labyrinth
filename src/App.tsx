@@ -408,7 +408,7 @@ export const App = () => {
                     {/* {gr2} */}
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
-                            d={calcPath(allPairs, state.size, sm, mx, my)}
+                            d={calcPath(allPairs, state.size, sm, cx, cy)}
                             strokeWidth={dr * 1.5}
                             strokeLinecap="round"
                             strokeLinejoin="round"

@@ -43,12 +43,15 @@ export const calcPath = (
     pairs: State['pairs'],
     size: State['size'],
     sectionMap: SectionMap,
-    mx: number,
-    my: number,
+    cx: number,
+    cy: number,
 ): string => {
+    // const cx = (W - mx * 2) / 2;
+    // const cy = (H - my * 2) / 2;
+
     return pairs
         .map((pair) =>
-            calcPathParts(pair, size, sectionMap, mx, my).paths.join(' '),
+            calcPathParts(pair, size, sectionMap, cx, cy).paths.join(' '),
         )
         .join(' ');
 };
@@ -57,16 +60,13 @@ export const calcPathParts = (
     points: Coord[],
     size: State['size'],
     sectionMap: SectionMap,
-    mx: number,
-    my: number,
+    cx: number,
+    cy: number,
 ): { paths: string[]; polar: (typeof sectionMap)[''][] } => {
     const polar = points
         .map(({ x, y }) => ({ x: size.width - 1 - x, y }))
         .map(({ x, y }) => sectionMap[`${x},${y}`])
         .filter(Boolean);
-
-    const cx = (W - mx * 2) / 2;
-    const cy = (H - my * 2) / 2;
 
     const paths = polar.map((pos, i) => {
         const x = Math.cos(pos.t) * pos.r + cx;
@@ -94,6 +94,13 @@ export const calcPathParts = (
 export const epsilon = 0.000001;
 
 export const normalizeAngle = (angle: number): number => {
+    if (isNaN(angle)) {
+        throw new Error(`NAN`);
+    }
+    if (!isFinite(angle)) {
+        debugger;
+        return 0;
+    }
     if (angle > Math.PI) {
         return normalizeAngle(angle - Math.PI * 2);
     }
