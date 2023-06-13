@@ -1,4 +1,8 @@
 
+- [ ] click a line to toggle it?
+
+
+
 - [x] circles in the middle
 - [x] move a bunches
 - [ ] select a rect pls

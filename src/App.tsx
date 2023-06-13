@@ -405,7 +405,10 @@ export const App = () => {
                             <circle
                                 cx={cx}
                                 cy={cy}
-                                r={dr * (state.circle + state.inner - 1) * 2}
+                                r={
+                                    dr * (state.circle + state.inner - 1) +
+                                    dr / 2
+                                }
                                 fill="blue"
                             />
                         ) : null}
