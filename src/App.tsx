@@ -2,7 +2,7 @@ import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { Size } from './Size';
 import { calcPath, cart, polarPath, rainbow, showColor } from './calcPath';
 import { SectionMap, pointDistance, sectionMap } from './sections';
-import { migrateState, useDropStateTarget } from './useDropTarget';
+import { useDropStateTarget } from './useDropTarget';
 import { SectionsInput } from './SectionsInput';
 import { CartesianEdits } from './CartesianEdits';
 import { ExportButton } from './ExportButton';
@@ -49,7 +49,21 @@ export const useLocalStorage = <T,>(key: string, initial: () => T) => {
     return [state, setState] as const;
 };
 
-const initialState: State = {
+export const migrateState = (state: State) => {
+    if (!state.version) {
+        if ('points' in state) {
+            const pts = state.points as Coord[];
+            state.pairs = [];
+            for (let i = 1; i < pts.length; i++) {
+                state.pairs.push([pts[i - 1], pts[i]]);
+            }
+        }
+        state.version = 1;
+    }
+    return state;
+};
+
+export const initialState: State = {
     version: 1,
     size: { width: 10, height: 10 },
     pairs: [],
@@ -288,7 +302,7 @@ export const App = () => {
         if (state) {
             dispatch({ type: 'reset', state });
         }
-    });
+    }, migrateState);
 
     const st = React.useRef(state);
     st.current = state;
