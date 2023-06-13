@@ -5,7 +5,7 @@ import { SectionMap } from './sections';
 const closeEnough = (a: number, b: number) => Math.abs(a - b) < 0.001;
 
 export const showColor = (
-    points: State['points'],
+    points: Coord[],
     size: State['size'],
     sectionMap: SectionMap,
     mx: number,
@@ -41,7 +41,7 @@ export const showColor = (
 };
 
 export const calcPath = (
-    points: State['points'],
+    points: Coord[],
     size: State['size'],
     sectionMap: SectionMap,
     mx: number,
@@ -51,7 +51,7 @@ export const calcPath = (
 };
 
 export const calcPathParts = (
-    points: State['points'],
+    points: Coord[],
     size: State['size'],
     sectionMap: SectionMap,
     mx: number,

@@ -10,8 +10,10 @@ import { ExportButton } from './ExportButton';
 export type Coord = { x: number; y: number };
 
 export type State = {
+    version: 1;
     size: { width: number; height: number };
-    points: Coord[];
+    // points: Coord[];
+    pairs: [Coord, Coord][];
     selection: number[];
     sections: number[];
     inner?: number;
@@ -47,25 +49,26 @@ export const useLocalStorage = <T,>(key: string, initial: () => T) => {
 };
 
 const initialState: State = {
+    version: 1,
     size: { width: 10, height: 10 },
-    points: [],
+    pairs: [],
     selection: [],
     sections: [],
 };
 
 export type Action =
     | { type: 'sections'; sections: number[] }
-    | { type: 'flip'; x: boolean }
+    // | { type: 'flip'; x: boolean }
     | { type: 'size'; size: { width: number; height: number } }
-    | { type: 'click'; pos: Coord }
+    // | { type: 'click'; pos: Coord }
     | { type: 'circle'; circle: number }
-    | { type: 'clear' }
-    | { type: 'delete' }
-    | { type: 'move'; from: Coord; to: Coord }
+    // | { type: 'clear' }
+    // | { type: 'delete' }
+    // | { type: 'move'; from: Coord; to: Coord }
     | { type: 'reset'; state: State }
     | { type: 'inner'; inner: number }
-    | { type: 'select'; selection: number[] }
-    | { type: 'undo' };
+    | { type: 'select'; selection: number[] };
+// | { type: 'undo' };
 
 const flip = (points: Coord[], size: State['size'], x: boolean) => {
     if (x) {
@@ -77,67 +80,67 @@ const flip = (points: Coord[], size: State['size'], x: boolean) => {
 
 const reduce = (state: State, action: Action): State => {
     switch (action.type) {
-        case 'undo': {
-            const at = state.selection.length
-                ? Math.max(...state.selection)
-                : state.selection.length;
-            const points = state.points.slice();
-            points.splice(at, 1);
-            return { ...state, points, selection: [at - 1] };
-        }
+        // case 'undo': {
+        //     const at = state.selection.length
+        //         ? Math.max(...state.selection)
+        //         : state.selection.length;
+        //     const points = state.points.slice();
+        //     points.splice(at, 1);
+        //     return { ...state, points, selection: [at - 1] };
+        // }
         case 'select':
             return { ...state, selection: action.selection };
-        case 'clear':
-            return { ...state, points: [] };
+        // case 'clear':
+        //     return { ...state, points: [] };
         case 'inner':
             return { ...state, inner: action.inner };
         case 'size':
             return { ...state, size: action.size };
         case 'reset':
             return action.state;
-        case 'click': {
-            const at = state.selection.length
-                ? Math.max(...state.selection)
-                : state.selection.length;
-            const points = state.points.slice();
-            points.splice(at + 1, 0, action.pos);
-            return {
-                ...state,
-                points,
-                selection: [state.selection.length ? at + 1 : at],
-            };
-        }
+        // case 'click': {
+        //     const at = state.selection.length
+        //         ? Math.max(...state.selection)
+        //         : state.selection.length;
+        //     const points = state.points.slice();
+        //     points.splice(at + 1, 0, action.pos);
+        //     return {
+        //         ...state,
+        //         points,
+        //         selection: [state.selection.length ? at + 1 : at],
+        //     };
+        // }
         case 'sections':
             return { ...state, sections: action.sections };
-        case 'delete':
-            return {
-                ...state,
-                selection: [Math.max(0, Math.min(...state.selection) - 1)],
-                points: state.points.filter(
-                    (_, i) => !state.selection.includes(i),
-                ),
-            };
-        case 'move': {
-            const diff: Coord = {
-                x: action.to.x - action.from.x,
-                y: action.to.y - action.from.y,
-            };
-            console.log('diff', diff, action.from, action.to);
-            // return state;
-            return {
-                ...state,
-                points: state.points.map(({ x, y }, i) =>
-                    state.selection.includes(i)
-                        ? { x: x + diff.x, y: y + diff.y }
-                        : { x, y },
-                ),
-            };
-        }
-        case 'flip':
-            return {
-                ...state,
-                points: flip(state.points, state.size, action.x),
-            };
+        // case 'delete':
+        //     return {
+        //         ...state,
+        //         selection: [Math.max(0, Math.min(...state.selection) - 1)],
+        //         points: state.points.filter(
+        //             (_, i) => !state.selection.includes(i),
+        //         ),
+        //     };
+        // case 'move': {
+        //     const diff: Coord = {
+        //         x: action.to.x - action.from.x,
+        //         y: action.to.y - action.from.y,
+        //     };
+        //     console.log('diff', diff, action.from, action.to);
+        //     // return state;
+        //     return {
+        //         ...state,
+        //         points: state.points.map(({ x, y }, i) =>
+        //             state.selection.includes(i)
+        //                 ? { x: x + diff.x, y: y + diff.y }
+        //                 : { x, y },
+        //         ),
+        //     };
+        // }
+        // case 'flip':
+        //     return {
+        //         ...state,
+        //         points: flip(state.points, state.size, action.x),
+        //     };
         case 'circle':
             return { ...state, circle: action.circle };
     }
@@ -230,14 +233,16 @@ export const App = () => {
         }
     }
 
-    const dists = pointDistance(state.points, sm, dr, state.size);
+    const points: Coord[] = [];
+
+    const dists = pointDistance(points, sm, dr, state.size);
 
     const [moving, setMoving] = useState(
         null as null | { i: number; from: Coord; to: Coord },
     );
 
     const movedPoints = moving
-        ? state.points.map((p, i) =>
+        ? points.map((p, i) =>
               state.selection.includes(i)
                   ? {
                         x: moving!.to.x - moving!.from.x + p.x,
@@ -245,7 +250,7 @@ export const App = () => {
                     }
                   : p,
           )
-        : state.points.slice();
+        : points.slice();
 
     const ms = mouse ? snapPos(mouse.pos, dx, dy) : null;
     const mp = ms ? sm[`${state.size.width - 1 - ms.x},${ms.y}`] : null;
@@ -279,24 +284,24 @@ export const App = () => {
                 return;
             }
             const state = st.current;
-            if (evt.key === 'Delete' || evt.key === 'Backspace') {
-                dispatch({ type: 'delete' });
-            }
+            // if (evt.key === 'Delete' || evt.key === 'Backspace') {
+            //     dispatch({ type: 'delete' });
+            // }
             if (evt.key === 'Escape') {
                 setMode('move');
             }
-            if (evt.key === 'z' && (evt.ctrlKey || evt.metaKey)) {
-                dispatch({ type: 'undo' });
-            }
-            if (evt.key === 'a') {
-                if (evt.metaKey) {
-                    evt.preventDefault();
-                    const all = st.current.points.map((p, i) => i);
-                    dispatch({ type: 'select', selection: all });
-                } else {
-                    setMode('add');
-                }
-            }
+            // if (evt.key === 'z' && (evt.ctrlKey || evt.metaKey)) {
+            //     dispatch({ type: 'undo' });
+            // }
+            // if (evt.key === 'a') {
+            //     if (evt.metaKey) {
+            //         evt.preventDefault();
+            //         const all = st.current.points.map((p, i) => i);
+            //         dispatch({ type: 'select', selection: all });
+            //     } else {
+            //         setMode('add');
+            //     }
+            // }
         };
         document.addEventListener('keydown', fn);
         return () => document.removeEventListener('keydown', fn);
@@ -310,14 +315,14 @@ export const App = () => {
             <button disabled={mode === 'add'} onClick={() => setMode('add')}>
                 Add
             </button>
-            <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
+            {/* <button onClick={() => dispatch({ type: 'clear' })}>Clear</button>
             <button onClick={() => dispatch({ type: 'undo' })}>Undo</button>
             <button onClick={() => dispatch({ type: 'flip', x: true })}>
                 Flip X
             </button>
             <button onClick={() => dispatch({ type: 'flip', x: false })}>
                 Flip Y
-            </button>
+            </button> */}
             <button onClick={() => setColor(!color)}>
                 {color ? 'Hide Color' : 'Show Color'}
             </button>
@@ -442,14 +447,14 @@ export const App = () => {
                 />
             </div>
 
-            <input
+            {/* <input
                 type="range"
                 min="0"
                 max="1"
                 step={1 / state.points.length}
                 value={amt}
                 onChange={(evt) => setAmt(+evt.target.value)}
-            />
+            /> */}
             <div>{JSON.stringify(showPoints)}</div>
             <ExportButton csvg={cref} svg={ref} state={state} />
         </div>
