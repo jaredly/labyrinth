@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { reduceLocalStorage } from './App';
 import { calcLocation, sectionMap, sectionMap2 } from './sections';
 import { calcPath, calcPathParts, calcPathPartsInner } from './calcPath';
@@ -75,11 +75,17 @@ export const migrateState = (state: State) => {
 export type Action =
     | { type: 'toggle'; pair: string; section: number }
     | { type: 'remove'; row: number }
+    | { type: 'clear' }
     | { type: 'add'; row: number; high: boolean }
     | { type: 'sections'; sections: State['sections'] };
 
 const reduce = (state: State, action: Action): State => {
     switch (action.type) {
+        case 'clear':
+            return {
+                ...state,
+                sections: state.sections.map((s) => ({ ...s, pairs: {} })),
+            };
         case 'sections':
             return { ...state, sections: action.sections };
         case 'toggle': {
@@ -193,6 +199,66 @@ export const App2 = () => {
     const concol = '#666';
     const missing = '#111';
 
+    const [tmpToggle, setTmpToggle] = useState(
+        null as null | {
+            [key: string]: {
+                section: number;
+                pair: string;
+                newv: boolean;
+                over: boolean;
+            };
+        },
+    );
+
+    const onMove = useCallback(
+        (section: number, pair: string, down = false) =>
+            (evt: React.MouseEvent) => {
+                evt.preventDefault();
+                evt.stopPropagation();
+                const key = `${section}:${pair}`;
+                setTmpToggle((map) => {
+                    if (!map) {
+                        if (down) {
+                            map = {};
+                        } else {
+                            return map;
+                        }
+                    }
+                    if (map[key]?.over) {
+                        return map;
+                    }
+                    return {
+                        ...map,
+                        [key]: {
+                            newv: !(
+                                map[key]?.newv ??
+                                state.sections[section].pairs[pair]
+                            ),
+                            section,
+                            pair,
+                            over: true,
+                        },
+                    };
+                });
+            },
+        [state],
+    );
+    const onMouseOut = useCallback(
+        (section: number, pair: string) => () => {
+            const key = `${section}:${pair}`;
+            setTmpToggle((map) => {
+                if (!map) return map;
+                if (!map[key]?.over) {
+                    return map;
+                }
+                return { ...map, [key]: { ...map[key], over: false } };
+            });
+        },
+        [state],
+    );
+
+    const shrink = 0.1;
+
     const addLine = (
         section: number,
         yoff: number,
@@ -206,14 +272,16 @@ export const App2 = () => {
         const pk = pairKey(p1, p2);
         const pos =
             kind === 'pair' ? 'front' : kind === 'connector' ? 'mid' : 'back';
+        const xs = p1.x === p2.x ? 0 : shrink;
+        const ys = p1.y === p2.y ? 0 : shrink;
         cartesian[pos].push(
             <line
                 key={`${section} ${pk}`}
                 data-pk={pk}
-                x1={p1.x}
-                x2={p2.x}
-                y1={p1.y + yoff}
-                y2={p2.y + yoff}
+                x1={p1.x + xs}
+                x2={p2.x - xs}
+                y1={p1.y + yoff + ys}
+                y2={p2.y + yoff - ys}
                 strokeLinecap="round"
                 stroke={
                     kind === 'pair'
@@ -223,11 +291,14 @@ export const App2 = () => {
                         : missing
                 }
                 strokeWidth={0.1}
-                onClick={
-                    connectors[pk] == null
-                        ? () => dispatch({ type: 'toggle', pair: pk, section })
-                        : undefined
-                }
+                // onClick={
+                //     connectors[pk] == null
+                //         ? () => dispatch({ type: 'toggle', pair: pk, section })
+                //         : undefined
+                // }
+                onMouseDown={onMove(section, pk, true)}
+                onMouseMove={onMove(section, pk)}
+                onMouseOut={onMouseOut(section, pk)}
                 style={
                     connectors[pk] == null ? { cursor: 'pointer' } : undefined
                 }
@@ -283,8 +354,12 @@ export const App2 = () => {
         }
     };
 
+    const sections = tmpToggle
+        ? mergeTmp(tmpToggle, state.sections)
+        : state.sections;
+
     const singles: { [key: string]: boolean } = {};
-    state.sections.forEach(({ pairs, rows }, i) => {
+    sections.forEach(({ pairs, rows }, i) => {
         const add = ({ x, y }: Coord) => {
             const k = `${i}:${x},${y}`;
             if (singles[k]) {
@@ -297,7 +372,7 @@ export const App2 = () => {
     });
 
     let yoff = 0;
-    state.sections.forEach(({ pairs, rows }, i) => {
+    sections.forEach(({ pairs, rows }, i) => {
         parsePairs(pairs);
 
         for (let x = 0; x < vwidth; x++) {
@@ -325,14 +400,13 @@ export const App2 = () => {
         const oldYoff = yoff;
         yoff += rows - 1 + 0.4;
 
-        const sectionTheta =
-            (i / state.sections.length) * Math.PI * 2 + Math.PI / 2;
+        const sectionTheta = (i / sections.length) * Math.PI * 2 + Math.PI / 2;
         const nsectionTheta =
-            ((i + 1) / state.sections.length) * Math.PI * 2 + Math.PI / 2;
-        console.log(singles);
+            ((i + 1) / sections.length) * Math.PI * 2 + Math.PI / 2;
+        // console.log(singles);
         for (let x = 0; x < width; x++) {
             const k1 = `${i}:${x},${rows - 1}`;
-            const k2 = `${(i + 1) % state.sections.length}:${x},${0}`;
+            const k2 = `${(i + 1) % sections.length}:${x},${0}`;
             const needed = singles[k1] || singles[k2];
             // console.log(k1, k2, singles[k1], singles[k2]);
             // if (!needed) continue;
@@ -346,16 +420,14 @@ export const App2 = () => {
                                 sectionTheta,
                                 dr,
                                 r0,
-                                rows: state.sections[i].rows,
+                                rows: sections[i].rows,
                             }),
                             calcLocation({
                                 pos: { x: width - x, y: 0 },
                                 sectionTheta: nsectionTheta,
                                 dr,
                                 r0,
-                                rows: state.sections[
-                                    (i + 1) % state.sections.length
-                                ].rows,
+                                rows: sections[(i + 1) % sections.length].rows,
                             }),
                         ],
                         VW / 2,
@@ -387,7 +459,16 @@ export const App2 = () => {
     return (
         <div>
             <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                <svg width={W + m * 2} height={H + m * 2}>
+                <svg
+                    width={W + m * 2}
+                    height={H + m * 2}
+                    onMouseDown={(evt) => {
+                        setTmpToggle({});
+                    }}
+                    onMouseUp={(evt) => {
+                        setTmpToggle(null);
+                    }}
+                >
                     <g transform={`translate(${m},${m})`}>
                         <g transform={`scale(${scale})`}>
                             {ungroup(cartesian)}
@@ -409,6 +490,11 @@ export const App2 = () => {
                     </g>
                 </svg>
             </div>
+            <div>
+                <button onClick={() => dispatch({ type: 'clear' })}>
+                    Clear
+                </button>
+            </div>
         </div>
     );
 };
@@ -426,3 +512,24 @@ const pairsToObject = (pairs: [Coord, Coord][]) => {
     pairs.forEach((pair) => (obj[pairKey(pair[0], pair[1])] = true));
     return obj;
 };
+
+function mergeTmp(
+    tmpToggle: {
+        [key: string]: {
+            section: number;
+            pair: string;
+            newv: boolean;
+            over: boolean;
+        };
+    },
+    sections: Section[],
+) {
+    sections = sections.map(({ pairs, rows }) => ({
+        pairs: { ...pairs },
+        rows,
+    }));
+    Object.values(tmpToggle).forEach(({ section, pair, newv }) => {
+        sections[section].pairs[pair] = newv;
+    });
+    return sections;
+}
