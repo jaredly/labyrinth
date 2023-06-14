@@ -25,15 +25,16 @@ export const reduceLocalStorage = <T, A>(
     initial: () => T,
     reduce: (state: T, action: A) => T,
     migrate: (state: any) => T = (x) => x,
+    disable = false,
 ) => {
     const [state, dispatch] = React.useReducer(reduce, null, () =>
         localStorage[key] ? migrate(JSON.parse(localStorage[key])) : initial(),
     );
     React.useEffect(() => {
-        if (state != null) {
+        if (state != null && !disable) {
             localStorage[key] = JSON.stringify(state);
         }
-    }, [state]);
+    }, [state, disable]);
     return [state, dispatch] as const;
 };
 
