@@ -6,7 +6,7 @@ export const Addliness = ({
     state,
     scale,
 }: {
-    state: State;
+    state: State & { size: { height: number } };
     dispatch: React.Dispatch<Action>;
     scale: number;
 }) => {

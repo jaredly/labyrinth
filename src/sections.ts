@@ -1,4 +1,5 @@
 import { Coord, State } from './App';
+import { Section, parseKey } from './App2';
 import { angleBetween, normalizeAngle } from './calcPath';
 
 /*
@@ -50,8 +51,61 @@ export type SectionMap = {
         x: number;
         y: number;
         offset: number;
-        section: number;
+        // section: number;
     };
+};
+
+export const calcLocation = ({
+    pos: { x, y },
+    dr,
+    r0,
+    sectionTheta,
+    rows,
+}: {
+    pos: Coord;
+    r0: number;
+    sectionTheta: number;
+    rows: number;
+    dr: number;
+}) => {
+    const r = (r0 + x) * dr;
+    let t = sectionTheta;
+    const offset = rows / 2 - 0.5 - y;
+    t += (offset * dr) / r;
+    return {
+        t: normalizeAngle(t) + Math.PI / 2,
+        r,
+        x,
+        y,
+        offset,
+    };
+};
+
+export const sectionMap2 = (sections: Section[], dr: number, r0: number) => {
+    const mapping: SectionMap = {};
+    sections.forEach(({ rows, pairs }, i) => {
+        const sectionTheta = (i / sections.length) * Math.PI * 2 + Math.PI / 2;
+        Object.keys(pairs)
+            .filter((k) => pairs[k])
+            .forEach((key) => {
+                const [p1, p2] = parseKey(key);
+                mapping[`${i}:${p1.x},${p1.y}`] = calcLocation({
+                    pos: p1,
+                    sectionTheta,
+                    dr,
+                    r0,
+                    rows,
+                });
+                mapping[`${i}:${p2.x},${p2.y}`] = calcLocation({
+                    pos: p2,
+                    sectionTheta,
+                    dr,
+                    r0,
+                    rows,
+                });
+            });
+    });
+    return mapping;
 };
 
 export const sectionMap = (
@@ -78,7 +132,7 @@ export const sectionMap = (
                 x,
                 y,
                 offset,
-                section,
+                // section,
             };
         }
     }
