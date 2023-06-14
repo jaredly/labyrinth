@@ -1,7 +1,7 @@
 import React from 'react';
 import { reduceLocalStorage } from './App';
-import { sectionMap, sectionMap2 } from './sections';
-import { calcPath, calcPathParts } from './calcPath';
+import { calcLocation, sectionMap, sectionMap2 } from './sections';
+import { calcPath, calcPathParts, calcPathPartsInner } from './calcPath';
 import { Addliness } from './Addliness';
 export type Coord = { x: number; y: number };
 
@@ -147,7 +147,7 @@ export const App2 = () => {
         () => initialState,
         reduce,
         migrateState,
-        true,
+        // true,
     );
 
     let mx = 0;
@@ -164,6 +164,8 @@ export const App2 = () => {
         });
     });
     const vwidth = Math.ceil((width + 1) / 3) * 3;
+
+    // console.log(state.sections, width);
 
     const W = 800;
     const aspect = vwidth / height;
@@ -182,7 +184,8 @@ export const App2 = () => {
     const vm = 5;
     const R = VW / 2;
     const dr = R / (width + (state.inner ?? 0));
-    const sm = sectionMap2(state.sections, dr, state.inner ?? 1);
+    const r0 = state.inner ?? 1;
+    // const sm = sectionMap2(state.sections, dr, state.inner ?? 1, width);
 
     const cartesian: Grouped = { slop: [], back: [], mid: [], front: [] };
     const circular: Grouped = { slop: [], back: [], mid: [], front: [] };
@@ -197,11 +200,15 @@ export const App2 = () => {
         p2: Coord,
         kind: 'pair' | 'connector' | null,
     ) => {
+        const sectionTheta =
+            (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
+
         const pk = pairKey(p1, p2);
         const pos =
             kind === 'pair' ? 'front' : kind === 'connector' ? 'mid' : 'back';
         cartesian[pos].push(
             <line
+                key={`${section} ${pk}`}
                 data-pk={pk}
                 x1={p1.x * scale}
                 x2={p2.x * scale}
@@ -226,34 +233,62 @@ export const App2 = () => {
                 }
             />,
         );
-        circular[pos].push(
-            <path
-                data-pk={pk}
-                d={calcPathParts([p1, p2], size, sm, VW / 2, VW / 2).paths.join(
-                    ' ',
-                )}
-                strokeLinecap="round"
-                fill="none"
-                stroke={kind != null ? 'blue' : missing}
-                strokeWidth={5}
-                onClick={
-                    connectors[pk] == null
-                        ? () => dispatch({ type: 'toggle', pair: pk, section })
-                        : undefined
-                }
-                style={
-                    connectors[pk] == null ? { cursor: 'pointer' } : undefined
-                }
-            />,
-        );
+        // console.log(sm);
+        if (p1.x < width && p2.x < width) {
+            circular[pos].push(
+                <path
+                    key={`${section} ${pk}`}
+                    data-pk={pk}
+                    d={calcPathPartsInner(
+                        [
+                            calcLocation({
+                                pos: { x: width - p1.x, y: p1.y },
+                                sectionTheta,
+                                dr,
+                                r0,
+                                rows: state.sections[section].rows,
+                            }),
+                            calcLocation({
+                                pos: { x: width - p2.x, y: p2.y },
+                                sectionTheta,
+                                dr,
+                                r0,
+                                rows: state.sections[section].rows,
+                            }),
+                        ],
+                        VW / 2,
+                        VW / 2,
+                    ).paths.join(' ')}
+                    strokeLinecap="round"
+                    fill="none"
+                    stroke={kind != null ? 'blue' : missing}
+                    strokeWidth={5}
+                    onClick={
+                        connectors[pk] == null
+                            ? () =>
+                                  dispatch({
+                                      type: 'toggle',
+                                      pair: pk,
+                                      section,
+                                  })
+                            : undefined
+                    }
+                    style={
+                        connectors[pk] == null
+                            ? { cursor: 'pointer' }
+                            : undefined
+                    }
+                />,
+            );
+        }
     };
 
     let yoff = 0;
     state.sections.forEach(({ pairs, rows }, i) => {
         parsePairs(pairs);
 
-        for (let y = 0; y < rows; y++) {
-            for (let x = 0; x < vwidth; x++) {
+        for (let x = 0; x < vwidth; x++) {
+            for (let y = 0; y < rows; y++) {
                 if (y < rows - 1) {
                     addLine(
                         i,

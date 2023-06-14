@@ -70,7 +70,7 @@ export const calcLocation = ({
 }) => {
     const r = (r0 + x) * dr;
     let t = sectionTheta;
-    const offset = rows / 2 - 0.5 - y;
+    const offset = y - (rows / 2 - 0.5);
     t += (offset * dr) / r;
     return {
         t: normalizeAngle(t) + Math.PI / 2,
@@ -81,7 +81,12 @@ export const calcLocation = ({
     };
 };
 
-export const sectionMap2 = (sections: Section[], dr: number, r0: number) => {
+export const sectionMap2 = (
+    sections: Section[],
+    dr: number,
+    r0: number,
+    width: number,
+) => {
     const mapping: SectionMap = {};
     sections.forEach(({ rows, pairs }, i) => {
         const sectionTheta = (i / sections.length) * Math.PI * 2 + Math.PI / 2;
@@ -90,14 +95,14 @@ export const sectionMap2 = (sections: Section[], dr: number, r0: number) => {
             .forEach((key) => {
                 const [p1, p2] = parseKey(key);
                 mapping[`${i}:${p1.x},${p1.y}`] = calcLocation({
-                    pos: p1,
+                    pos: { x: width - 1 - p1.x, y: p1.y },
                     sectionTheta,
                     dr,
                     r0,
                     rows,
                 });
                 mapping[`${i}:${p2.x},${p2.y}`] = calcLocation({
-                    pos: p2,
+                    pos: { x: width - 1 - p2.x, y: p2.y },
                     sectionTheta,
                     dr,
                     r0,

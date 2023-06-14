@@ -63,11 +63,20 @@ export const calcPathParts = (
     cx: number,
     cy: number,
 ): { paths: string[]; polar: (typeof sectionMap)[''][] } => {
-    const polar = points
+    const keys = points
         .map(({ x, y }) => ({ x: size.width - 1 - x, y }))
-        .map(({ x, y }) => sectionMap[`${x},${y}`])
+        .map(({ x, y }) => `${x},${y}`)
+        .map((key) => sectionMap[key])
         .filter(Boolean);
 
+    return calcPathPartsInner(keys, cx, cy);
+};
+
+export const calcPathPartsInner = (
+    polar: SectionMap[''][],
+    cx: number,
+    cy: number,
+): { paths: string[]; polar: SectionMap[''][] } => {
     const paths = polar.map((pos, i) => {
         const x = Math.cos(pos.t) * pos.r + cx;
         const y = Math.sin(pos.t) * pos.r + cy;
@@ -95,6 +104,7 @@ export const epsilon = 0.000001;
 
 export const normalizeAngle = (angle: number): number => {
     if (isNaN(angle)) {
+        debugger;
         throw new Error(`NAN`);
     }
     if (!isFinite(angle)) {
