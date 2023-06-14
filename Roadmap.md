@@ -2,6 +2,7 @@
 # V2
 
 - [x] basic toggle of pairs
+- [x] adaptive width
 - [ ] move sections locations
 - [ ] add/remove sections
 - [ ] add/remove lines

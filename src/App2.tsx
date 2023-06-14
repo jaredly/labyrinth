@@ -6,7 +6,7 @@ export type Coord = { x: number; y: number };
 
 export type State = {
     version: 2;
-    size: { width: number; height: number };
+    size: { _width: number; height: number };
     pairs: { [key: string]: boolean };
     selection: number[];
     sections: number[];
@@ -16,7 +16,7 @@ export type State = {
 
 export const initialState: State = {
     version: 2,
-    size: { width: 10, height: 10 },
+    size: { _width: 10, height: 10 },
     pairs: {},
     selection: [],
     sections: [-0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 10.5],
@@ -87,23 +87,29 @@ export const App2 = () => {
         reduce,
         migrateState,
     );
-    const W = 800;
-    const aspect = state.size.width / state.size.height;
-    const H = W / aspect;
-    const m = 100;
 
-    const scale = W / state.size.width;
-
-    const connectors: { [key: string]: boolean } = {};
     const pairs = Object.keys(state.pairs)
         .filter((k) => state.pairs[k])
         .map(parseKey);
     let mx = 0;
+    let width = 5;
     pairs.forEach(([p1, p2]) => {
         if (p1.x === p2.x) {
             mx = Math.max(mx, p1.x);
         }
+        width = Math.max(width, p1.x + 1, p2.x + 1);
     });
+    // width =
+    const vwidth = Math.ceil((width + 1) / 3) * 3;
+
+    const W = 800;
+    const aspect = vwidth / state.size.height;
+    const H = W / aspect;
+    const m = 100;
+
+    const scale = W / vwidth;
+
+    const connectors: { [key: string]: boolean } = {};
 
     const off = 0;
 
@@ -112,11 +118,13 @@ export const App2 = () => {
     );
     console.log(state.sections, validSections);
 
+    const size = { width, height: state.size.height };
+
     const VW = 300;
     const vm = 5;
     const R = VW / 2;
-    const dr = R / (state.size.width + (state.inner ?? 0));
-    const sm = sectionMap(validSections, state.size, dr, state.inner ?? 1);
+    const dr = R / (width + (state.inner ?? 0));
+    const sm = sectionMap(validSections, size, dr, state.inner ?? 1);
 
     const lines: Grouped = { slop: [], back: [], mid: [], front: [] };
     const circles: Grouped = { slop: [], back: [], mid: [], front: [] };
@@ -151,7 +159,7 @@ export const App2 = () => {
     validSections.forEach((s, i) => {
         if (i % 2 === 1) {
             s = state.size.height - 1 - s;
-            for (let x = 0; x < state.size.width; x++) {
+            for (let x = 0; x < vwidth; x++) {
                 const k = pairKey({ x, y: s - 0.5 }, { x, y: s + 0.5 });
                 connectors[k] = x < mx + 1;
             }
@@ -205,14 +213,11 @@ export const App2 = () => {
         circles[pos].push(
             <path
                 data-pk={pk}
-                d={calcPathParts(
-                    [p1, p2],
-                    state.size,
-                    sm,
-                    VW / 2,
-                    VW / 2,
-                ).paths.join(' ')}
+                d={calcPathParts([p1, p2], size, sm, VW / 2, VW / 2).paths.join(
+                    ' ',
+                )}
                 strokeLinecap="round"
+                fill="none"
                 stroke={state.pairs[pk] || connectors[pk] ? 'blue' : missing}
                 strokeWidth={5}
                 onClick={
@@ -227,12 +232,12 @@ export const App2 = () => {
         );
     };
 
-    for (let x = 0; x < state.size.width; x++) {
+    for (let x = 0; x < vwidth; x++) {
         for (let y = 0; y < state.size.height; y++) {
             if (y < state.size.height - 1) {
                 addLine({ x, y }, { x, y: y + 1 });
             }
-            if (x < state.size.width - 1) {
+            if (x < vwidth - 1) {
                 addLine({ x, y }, { x: x + 1, y });
             }
         }
