@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { reduceLocalStorage } from './App';
 import { sectionMap } from './sections';
 import { calcPath, calcPathParts } from './calcPath';
+import { Addliness } from './Addliness';
 export type Coord = { x: number; y: number };
 
 export type State = {
@@ -51,7 +52,7 @@ export const migrateState = (state: State) => {
     return state;
 };
 
-type Action =
+export type Action =
     | { type: 'toggle'; pair: string }
     | { type: 'remove'; row: number }
     | { type: 'add'; row: number; high: boolean }
@@ -69,6 +70,39 @@ const reduce = (state: State, action: Action): State => {
                     [action.pair]: !state.pairs[action.pair],
                 },
             };
+        case 'add': {
+            const pairs = parsePairs(state.pairs);
+            return {
+                ...state,
+                size: { ...state.size, height: state.size.height + 1 },
+                sections: state.sections.map((s) =>
+                    s > action.row ? s + 1 : s,
+                ),
+                pairs: pairsToObject(
+                    pairs.flatMap(([p1, p2]) => {
+                        const one: [Coord, Coord][] = [
+                            [
+                                {
+                                    x: p1.x,
+                                    y: p1.y >= action.row ? p1.y + 1 : p1.y,
+                                },
+                                {
+                                    x: p2.x,
+                                    y: p1.y >= action.row ? p2.y + 1 : p2.y,
+                                },
+                            ],
+                        ];
+                        if (p1.y < action.row && p2.y >= action.row) {
+                            one.push([
+                                { x: p1.x, y: p1.y + 1 },
+                                { x: p2.x, y: p2.y + 1 },
+                            ]);
+                        }
+                        return one;
+                    }),
+                ),
+            };
+        }
     }
     console.info('unandled', action);
     return state;
@@ -92,9 +126,7 @@ export const App2 = () => {
         true,
     );
 
-    const pairs = Object.keys(state.pairs)
-        .filter((k) => state.pairs[k])
-        .map(parseKey);
+    const pairs = parsePairs(state.pairs);
     let mx = 0;
     let width = 5;
     pairs.forEach(([p1, p2]) => {
@@ -128,7 +160,7 @@ export const App2 = () => {
     const vm = 5;
     const R = VW / 2;
     const dr = R / (width + (state.inner ?? 0));
-    const sm = sectionMap(validSections, size, dr, state.inner ?? 1);
+    const sm = sectionMap(validSections, size, dr, state.inner ?? 1, false);
 
     const lines: Grouped = { slop: [], back: [], mid: [], front: [] };
     const circles: Grouped = { slop: [], back: [], mid: [], front: [] };
@@ -162,7 +194,7 @@ export const App2 = () => {
 
     validSections.forEach((s, i) => {
         if (i % 2 === 1) {
-            s = state.size.height - 1 - s;
+            // s = state.size.height - 1 - s;
             for (let x = 0; x < vwidth; x++) {
                 const k = pairKey({ x, y: s - 0.5 }, { x, y: s + 0.5 });
                 connectors[k] = x < mx + 1;
@@ -274,84 +306,16 @@ export const App2 = () => {
     );
 };
 
-const Addliness = ({
-    dispatch,
-    state,
-    scale,
-}: {
-    state: State;
-    dispatch: React.Dispatch<Action>;
-    scale: number;
-}) => {
-    const [pos, setPos] = useState(
-        null as null | { row: number; x: number; y: number },
-    );
-    const count = state.size.height + 1;
-    const height = scale * count;
-    return (
-        <g transform={`translate(${-scale / 2}, ${-scale})`}>
-            <rect
-                x={0}
-                y={0}
-                width={scale * 0.4}
-                height={height}
-                fill="transparent"
-                onMouseLeave={() => setPos(null)}
-                onMouseMove={(evt) => {
-                    const box = evt.currentTarget.getBoundingClientRect();
-                    const y = (evt.clientY - box.top) / box.height;
-                    setPos({
-                        row: Math.round(y * count * 2 * 1.5) / 1.5,
-                        x: evt.clientX - box.left,
-                        y: evt.clientY - box.top,
-                    });
-                }}
-                style={{ cursor: 'none' }}
-                onClick={() => {
-                    if (pos) {
-                        if (exact(pos.row / 2)) {
-                            dispatch({ type: 'remove', row: pos.row / 2 - 1 });
-                        } else {
-                            const row = Math.floor(pos.row / 2);
-                            const high = pos.row / 2 > row + 0.5;
-                            dispatch({ type: 'add', row, high });
-                        }
-                        console.log(pos);
-                    }
-                }}
-            />
-            {pos != null ? (
-                <circle
-                    cx={pos.x}
-                    cy={pos.y}
-                    fill="white"
-                    opacity={0.5}
-                    r={2}
-                    style={{ pointerEvents: 'none' }}
-                />
-            ) : null}
-            {pos != null ? (
-                <g
-                    transform={`translate(${scale * 0.2}, ${
-                        (pos.row * scale) / 2
-                    })`}
-                    style={{ pointerEvents: 'none' }}
-                >
-                    {/* <circle cx={0} cy={0} r={10} fill="#555" /> */}
-                    <path
-                        d={
-                            exact(pos.row)
-                                ? `M-7 0L7 0`
-                                : `M0 -7 L0 7 M-7 0 L7 0`
-                        }
-                        fill="none"
-                        stroke={exact(pos.row) ? 'red' : 'green'}
-                        strokeWidth={2}
-                    />
-                </g>
-            ) : null}
-        </g>
-    );
-};
+export const exact = (n: number) => Math.round(n) === n;
 
-const exact = (n: number) => Math.round(n) === n;
+function parsePairs(pairs: State['pairs']) {
+    return Object.keys(pairs)
+        .filter((k) => pairs[k])
+        .map(parseKey);
+}
+
+const pairsToObject = (pairs: [Coord, Coord][]) => {
+    const obj: State['pairs'] = {};
+    pairs.forEach((pair) => (obj[pairKey(pair[0], pair[1])] = true));
+    return obj;
+};
