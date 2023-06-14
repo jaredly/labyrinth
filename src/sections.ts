@@ -59,6 +59,7 @@ export const sectionMap = (
     size: State['size'],
     dr: number,
     r0: number,
+    rev = true,
 ) => {
     const mapping: SectionMap = {};
     const map = ySectionMap(sections, size.height);
@@ -71,7 +72,7 @@ export const sectionMap = (
 
             t += (offset * dr) / r;
 
-            mapping[`${x},${size.height - 1 - y}`] = {
+            mapping[`${x},${rev ? size.height - 1 - y : y}`] = {
                 t: normalizeAngle(t) + Math.PI / 2,
                 r,
                 x,

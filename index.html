@@ -6,7 +6,31 @@
         <meta http-equiv="X-UA-Compatible" content="ie=edge" />
         <title>Labyrinth</title>
         <link rel="favorite icon" href="favicon.png" />
-        <style></style>
+        <style>
+            body {
+                background-color: black;
+                color: white;
+            }
+            button {
+                background-color: #222;
+                color: inherit;
+                border: 0.5px solid #aaa;
+                border-radius: 2px;
+                margin-right: 4px;
+                margin-bottom: 4px;
+                cursor: pointer;
+            }
+            button:disabled {
+                background-color: #666;
+                cursor: default;
+            }
+            input {
+                background-color: #222;
+                color: inherit;
+                border: 0.5px solid #aaa;
+                border-radius: 2px;
+            }
+        </style>
     </head>
     <body>
         <script src="./run.tsx" type="module"></script>

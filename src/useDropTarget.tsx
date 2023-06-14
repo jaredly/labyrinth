@@ -1,5 +1,5 @@
 import React from 'react';
-import { State } from './App';
+import { Coord } from './App';
 
 export const useDropTarget = (
     onDrop: (file: File) => void,
@@ -37,13 +37,12 @@ export const useDropTarget = (
     return [dragging, callbacks];
 };
 
-export const migrateState = (state: State) => {
-    return state;
-};
-
-export const useDropStateTarget = (onDrop: (state: State | null) => void) => {
+export const useDropStateTarget = <State,>(
+    onDrop: (state: State | null) => void,
+    migrateState: (state: State) => State,
+) => {
     return useDropTarget((file) => {
-        getStateFromFile(
+        getStateFromFile<State>(
             file,
             (state) => {
                 if (state) {
@@ -85,7 +84,7 @@ export const useDropStateTarget = (onDrop: (state: State | null) => void) => {
 export const PREFIX = '<!-- STATE: ';
 export const SUFFIX = ' -->';
 
-export const getStateFromFile = (
+export const getStateFromFile = <State,>(
     file: File,
     done: (s: State | null) => void,
     attachment:

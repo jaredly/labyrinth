@@ -5,7 +5,7 @@ import { SectionMap } from './sections';
 const closeEnough = (a: number, b: number) => Math.abs(a - b) < 0.001;
 
 export const showColor = (
-    points: State['points'],
+    points: Coord[],
     size: State['size'],
     sectionMap: SectionMap,
     mx: number,
@@ -33,7 +33,6 @@ export const showColor = (
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 stroke={rainbow(dists[i] / max)}
-                // stroke={rainbow(i / points.length)}
                 fill="none"
             />
         );
@@ -41,37 +40,37 @@ export const showColor = (
 };
 
 export const calcPath = (
-    points: State['points'],
+    pairs: State['pairs'],
     size: State['size'],
     sectionMap: SectionMap,
-    mx: number,
-    my: number,
+    cx: number,
+    cy: number,
 ): string => {
-    return calcPathParts(points, size, sectionMap, mx, my).paths.join(' ');
+    // const cx = (W - mx * 2) / 2;
+    // const cy = (H - my * 2) / 2;
+
+    return pairs
+        .map((pair) =>
+            calcPathParts(pair, size, sectionMap, cx, cy).paths.join(' '),
+        )
+        .join(' ');
 };
 
 export const calcPathParts = (
-    points: State['points'],
+    points: Coord[],
     size: State['size'],
     sectionMap: SectionMap,
-    mx: number,
-    my: number,
+    cx: number,
+    cy: number,
 ): { paths: string[]; polar: (typeof sectionMap)[''][] } => {
     const polar = points
-        .map(({ x, y }) => ({ x: size.width - 1 - x, y })) // : size.height - 1 - y}))
+        .map(({ x, y }) => ({ x: size.width - 1 - x, y }))
         .map(({ x, y }) => sectionMap[`${x},${y}`])
         .filter(Boolean);
-    // polarPath(points, size);
-
-    const cx = (W - mx * 2) / 2;
-    const cy = (H - my * 2) / 2;
-    // const R = Math.min(cx, cy) * 0.8;
 
     const paths = polar.map((pos, i) => {
-        // const {t, r} = sectionMap[`${pos.x},${pos.y}`]
         const x = Math.cos(pos.t) * pos.r + cx;
         const y = Math.sin(pos.t) * pos.r + cy;
-        // const { x, y } = cart(t, r, R, cx, cy);
         if (i == 0) {
             return `M${x} ${y}`;
         }
@@ -84,7 +83,7 @@ export const calcPathParts = (
         const delta = angleBetween(pos.t, prev.t, cw);
 
         const largeArcFlag = Math.abs(delta) < Math.PI;
-        const sweepFlag = cw; // t < prev.t;
+        const sweepFlag = cw;
         return `A ${pos.r} ${pos.r} 0 ${largeArcFlag ? '1' : '0'} ${
             sweepFlag ? '1' : '0'
         } ${x} ${y}`;
@@ -95,6 +94,13 @@ export const calcPathParts = (
 export const epsilon = 0.000001;
 
 export const normalizeAngle = (angle: number): number => {
+    if (isNaN(angle)) {
+        throw new Error(`NAN`);
+    }
+    if (!isFinite(angle)) {
+        debugger;
+        return 0;
+    }
     if (angle > Math.PI) {
         return normalizeAngle(angle - Math.PI * 2);
     }

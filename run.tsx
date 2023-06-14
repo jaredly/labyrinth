@@ -1,6 +1,7 @@
 import React from 'react';
 import { Root, createRoot } from 'react-dom/client';
 import { App } from './src/App';
+import { App2 } from './src/App2';
 
 declare global {
     var root: Root;
@@ -13,4 +14,4 @@ const getRoot = () => {
     return (window.root = createRoot(node));
 };
 
-getRoot().render(<App />);
+getRoot().render(<App2 />);

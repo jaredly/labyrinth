@@ -1,4 +1,32 @@
 
+# V2
+
+- [x] basic toggle of pairs
+- [x] adaptive width
+- [ ] move sections locations
+- [ ] add/remove sections
+- [ ] add/remove lines
+- [ ] auto-add things to the right, prolly, right?
+
+
+Left side:
+- be able to "add in" lines between things
+- section centers can be a full row, not just in between
+
+- Different visualizations:
+  - [x] Cartesian
+  - [x] Circle
+  - [ ] Polygon
+  - [ ] offset polygon
+  - [ ] ?? offset circle ??
+
+
+#
+
+- [ ] click a line to toggle it?
+
+
+
 - [x] circles in the middle
 - [x] move a bunches
 - [ ] select a rect pls

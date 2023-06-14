@@ -112,19 +112,19 @@ export function CartesianEdits({
             onMouseUp={() => {
                 if (moving) {
                     setMoving(null);
-                    dispatch({
-                        type: 'move',
-                        from: moving.from,
-                        to: moving.to,
-                    });
+                    // dispatch({
+                    //     type: 'move',
+                    //     from: moving.from,
+                    //     to: moving.to,
+                    // });
                 }
             }}
             onClick={(evt) => {
                 if (mode === 'add') {
-                    dispatch({
-                        type: 'click',
-                        pos: snapPos(mousePos(evt, mx, my), dx, dy),
-                    });
+                    // dispatch({
+                    //     type: 'click',
+                    //     pos: snapPos(mousePos(evt, mx, my), dx, dy),
+                    // });
                 }
             }}
         >
