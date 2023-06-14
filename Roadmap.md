@@ -1,6 +1,13 @@
 
 # V2
 
+- [x] basic toggle of pairs
+- [ ] move sections locations
+- [ ] add/remove sections
+- [ ] add/remove lines
+- [ ] auto-add things to the right, prolly, right?
+
+
 Left side:
 - be able to "add in" lines between things
 - section centers can be a full row, not just in between

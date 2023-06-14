@@ -51,10 +51,14 @@ export const migrateState = (state: State) => {
     return state;
 };
 
-type Action = { type: 'toggle'; pair: string };
+type Action =
+    | { type: 'toggle'; pair: string }
+    | { type: 'sections'; sections: State['sections'] };
 
 const reduce = (state: State, action: Action): State => {
     switch (action.type) {
+        case 'sections':
+            return { ...state, sections: action.sections };
         case 'toggle':
             return {
                 ...state,
@@ -86,7 +90,7 @@ export const App2 = () => {
     const W = 800;
     const aspect = state.size.width / state.size.height;
     const H = W / aspect;
-    const m = 50;
+    const m = 100;
 
     const scale = W / state.size.width;
 
@@ -101,7 +105,50 @@ export const App2 = () => {
         }
     });
 
-    state.sections.forEach((s, i) => {
+    const off = 0;
+
+    const validSections = state.sections.filter(
+        (s) => s >= -0.5 && s <= state.size.height - 1 + 0.5,
+    );
+    console.log(state.sections, validSections);
+
+    const VW = 300;
+    const vm = 5;
+    const R = VW / 2;
+    const dr = R / (state.size.width + (state.inner ?? 0));
+    const sm = sectionMap(validSections, state.size, dr, state.inner ?? 1);
+
+    const lines: Grouped = { slop: [], back: [], mid: [], front: [] };
+    const circles: Grouped = { slop: [], back: [], mid: [], front: [] };
+
+    for (let i = -0.5; i < state.size.height + 0.5; i += 1) {
+        const idx = validSections.indexOf(i);
+        lines.front.push(
+            <circle
+                key={i}
+                cx={-50}
+                cy={scale * i}
+                data-i={i}
+                r={8}
+                fill={idx !== -1 ? (idx % 2 === 0 ? 'red' : 'blue') : 'gray'}
+                onClick={(evt) => {
+                    evt.stopPropagation();
+                    evt.preventDefault();
+                    let s = validSections.slice();
+                    if (s.includes(i)) {
+                        s = s.filter((n) => n !== i);
+                    } else {
+                        s.push(i);
+                        s.sort((a, b) => a - b);
+                    }
+                    dispatch({ type: 'sections', sections: s });
+                }}
+                style={{ cursor: 'pointer' }}
+            />,
+        );
+    }
+
+    validSections.forEach((s, i) => {
         if (i % 2 === 1) {
             s = state.size.height - 1 - s;
             for (let x = 0; x < state.size.width; x++) {
@@ -111,19 +158,8 @@ export const App2 = () => {
         }
     });
 
-    const off = 0;
-
-    const VW = 300;
-    const vm = 5;
-    const R = VW / 2;
-    const dr = R / (state.size.width + (state.inner ?? 0));
-    const sm = sectionMap(state.sections, state.size, dr, state.inner ?? 1);
-
     const concol = '#666';
     const missing = '#111';
-
-    const lines: Grouped = { slop: [], back: [], mid: [], front: [] };
-    const circles: Grouped = { slop: [], back: [], mid: [], front: [] };
 
     const addLine = (p1: Coord, p2: Coord) => {
         const pk = pairKey(p1, p2);
@@ -135,6 +171,7 @@ export const App2 = () => {
                     x2={p2.x * scale}
                     y1={p1.y * scale}
                     y2={p2.y * scale}
+                    data-pk={pk}
                     strokeLinecap="round"
                     stroke={'transparent'}
                     strokeWidth={50}
@@ -145,6 +182,7 @@ export const App2 = () => {
         }
         lines[pos].push(
             <line
+                data-pk={pk}
                 x1={p1.x * scale}
                 x2={p2.x * scale}
                 y1={p1.y * scale}
@@ -166,6 +204,7 @@ export const App2 = () => {
         );
         circles[pos].push(
             <path
+                data-pk={pk}
                 d={calcPathParts(
                     [p1, p2],
                     state.size,
