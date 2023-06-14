@@ -76,6 +76,7 @@ export const calcPathPartsInner = (
     polar: SectionMap[''][],
     cx: number,
     cy: number,
+    cwo?: boolean,
 ): { paths: string[]; polar: SectionMap[''][] } => {
     const paths = polar.map((pos, i) => {
         const x = Math.cos(pos.t) * pos.r + cx;
@@ -87,7 +88,7 @@ export const calcPathPartsInner = (
         if (prev.y === pos.y) {
             return `L${x} ${y}`;
         }
-        const cw = pos.y > prev.y;
+        const cw = cwo != null ? cwo : pos.y > prev.y;
 
         const delta = angleBetween(pos.t, prev.t, cw);
 

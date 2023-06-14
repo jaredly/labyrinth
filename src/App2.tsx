@@ -210,19 +210,19 @@ export const App2 = () => {
             <line
                 key={`${section} ${pk}`}
                 data-pk={pk}
-                x1={p1.x * scale}
-                x2={p2.x * scale}
-                y1={(p1.y + yoff) * scale}
-                y2={(p2.y + yoff) * scale}
+                x1={p1.x}
+                x2={p2.x}
+                y1={p1.y + yoff}
+                y2={p2.y + yoff}
                 strokeLinecap="round"
                 stroke={
                     kind === 'pair'
-                        ? 'red'
+                        ? 'blue'
                         : kind === 'connector'
                         ? concol
                         : missing
                 }
-                strokeWidth={10}
+                strokeWidth={0.1}
                 onClick={
                     connectors[pk] == null
                         ? () => dispatch({ type: 'toggle', pair: pk, section })
@@ -262,7 +262,7 @@ export const App2 = () => {
                     strokeLinecap="round"
                     fill="none"
                     stroke={kind != null ? 'blue' : missing}
-                    strokeWidth={5}
+                    strokeWidth={3}
                     onClick={
                         connectors[pk] == null
                             ? () =>
@@ -282,6 +282,19 @@ export const App2 = () => {
             );
         }
     };
+
+    const singles: { [key: string]: boolean } = {};
+    state.sections.forEach(({ pairs, rows }, i) => {
+        const add = ({ x, y }: Coord) => {
+            const k = `${i}:${x},${y}`;
+            if (singles[k]) {
+                singles[k] = true; // false;
+            } else if (singles[k] == null) {
+                singles[k] = true;
+            }
+        };
+        parsePairs(pairs).forEach((pair) => pair.map(add));
+    });
 
     let yoff = 0;
     state.sections.forEach(({ pairs, rows }, i) => {
@@ -309,7 +322,66 @@ export const App2 = () => {
                 }
             }
         }
-        yoff += rows - 1 + 0.2;
+        const oldYoff = yoff;
+        yoff += rows - 1 + 0.4;
+
+        const sectionTheta =
+            (i / state.sections.length) * Math.PI * 2 + Math.PI / 2;
+        const nsectionTheta =
+            ((i + 1) / state.sections.length) * Math.PI * 2 + Math.PI / 2;
+        console.log(singles);
+        for (let x = 0; x < width; x++) {
+            const k1 = `${i}:${x},${rows - 1}`;
+            const k2 = `${(i + 1) % state.sections.length}:${x},${0}`;
+            const needed = singles[k1] || singles[k2];
+            // console.log(k1, k2, singles[k1], singles[k2]);
+            // if (!needed) continue;
+            circular.mid.push(
+                <path
+                    key={`${i} ${x} - connector`}
+                    d={calcPathPartsInner(
+                        [
+                            calcLocation({
+                                pos: { x: width - x, y: rows - 1 },
+                                sectionTheta,
+                                dr,
+                                r0,
+                                rows: state.sections[i].rows,
+                            }),
+                            calcLocation({
+                                pos: { x: width - x, y: 0 },
+                                sectionTheta: nsectionTheta,
+                                dr,
+                                r0,
+                                rows: state.sections[
+                                    (i + 1) % state.sections.length
+                                ].rows,
+                            }),
+                        ],
+                        VW / 2,
+                        VW / 2,
+                        true,
+                    ).paths.join(' ')}
+                    strokeLinecap="round"
+                    fill="none"
+                    stroke={needed ? '#007' : '#300'}
+                    strokeWidth={3}
+                />,
+            );
+
+            cartesian.mid.push(
+                <line
+                    key={`${i} ${x} - connector`}
+                    x1={x}
+                    x2={x}
+                    y1={rows - 1 + oldYoff}
+                    y2={yoff}
+                    strokeLinecap="round"
+                    stroke={needed ? '#007' : '#500'}
+                    strokeWidth={needed ? 0.1 : 0.05}
+                />,
+            );
+        }
     });
 
     return (
@@ -317,7 +389,9 @@ export const App2 = () => {
             <div style={{ display: 'flex', alignItems: 'flex-start' }}>
                 <svg width={W + m * 2} height={H + m * 2}>
                     <g transform={`translate(${m},${m})`}>
-                        {ungroup(cartesian)}
+                        <g transform={`scale(${scale})`}>
+                            {ungroup(cartesian)}
+                        </g>
                         {/* <Addliness
                             dispatch={dispatch}
                             state={state}

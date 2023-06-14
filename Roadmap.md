@@ -1,4 +1,11 @@
 
+# V3
+
+- [x] basic cart
+- [x] basic circlular
+- [x] nicer rendering
+- [ ] add rows to section
+
 # V2
 
 - [x] basic toggle of pairs
@@ -7,6 +14,13 @@
 - [ ] add/remove sections
 - [ ] add/remove lines
 - [ ] auto-add things to the right, prolly, right?
+
+
+So, I think a better model would actually be to
+have the "sections" be first-class.
+
+
+
 
 
 Left side:
