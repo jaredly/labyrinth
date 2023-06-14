@@ -183,7 +183,7 @@ export const App2 = () => {
     const VW = 300;
     const vm = 5;
     const R = VW / 2;
-    const dr = R / (width + (state.inner ?? 0));
+    const dr = R / (width + (state.inner ?? 1) + 1);
     const r0 = state.inner ?? 1;
     // const sm = sectionMap2(state.sections, dr, state.inner ?? 1, width);
 
@@ -328,7 +328,7 @@ export const App2 = () => {
                 <svg
                     width={VW + vm * 2}
                     height={VW + vm * 2}
-                    style={{ marginTop: 50 - vm }}
+                    style={{ marginTop: 50 - vm, backgroundColor: '#0a0a0a' }}
                 >
                     <g transform={`translate(${vm},${vm})`}>
                         {ungroup(circular)}

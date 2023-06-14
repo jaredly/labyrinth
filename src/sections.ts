@@ -73,7 +73,7 @@ export const calcLocation = ({
     const offset = y - (rows / 2 - 0.5);
     t += (offset * dr) / r;
     return {
-        t: normalizeAngle(t) + Math.PI / 2,
+        t: normalizeAngle(t), // + Math.PI / 2,
         r,
         x,
         y,
