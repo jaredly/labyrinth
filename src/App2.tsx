@@ -74,7 +74,8 @@ export const migrateState = (state: State) => {
 
 export type Action =
     | { type: 'toggle'; pair: string; section: number }
-    | { type: 'remove'; row: number }
+    | { type: 'remove'; pairs: { section: number; pair: string }[] }
+    | { type: 'slide'; slide: Slide[] }
     | { type: 'clear' }
     | { type: 'add'; row: number; high: boolean }
     | { type: 'sections'; sections: State['sections'] };
@@ -88,6 +89,30 @@ const reduce = (state: State, action: Action): State => {
             };
         case 'sections':
             return { ...state, sections: action.sections };
+        case 'remove': {
+            const sections = state.sections.map((s) => ({
+                ...s,
+                pairs: { ...s.pairs },
+            }));
+            action.pairs.forEach(({ section, pair }) => {
+                delete sections[section].pairs[pair];
+            });
+            return { ...state, sections };
+        }
+        case 'slide': {
+            const sections = state.sections.map((s) => ({
+                ...s,
+                pairs: { ...s.pairs },
+            }));
+            for (let i = 1; i < action.slide.length; i++) {
+                const last = action.slide[i - 1];
+                const one = action.slide[i];
+                if (last.section === one.section) {
+                    sections[last.section].pairs[pairKey(last, one)] = true;
+                }
+            }
+            return { ...state, sections };
+        }
         case 'toggle': {
             const sections = state.sections.slice();
             sections[action.section] = {
@@ -199,62 +224,11 @@ export const App2 = () => {
     const concol = '#666';
     const missing = '#111';
 
-    const [tmpToggle, setTmpToggle] = useState(
-        null as null | {
-            [key: string]: {
-                section: number;
-                pair: string;
-                newv: boolean;
-                over: boolean;
-            };
-        },
-    );
-
-    const onMove = useCallback(
-        (section: number, pair: string, down = false) =>
-            (evt: React.MouseEvent) => {
-                evt.preventDefault();
-                evt.stopPropagation();
-                const key = `${section}:${pair}`;
-                setTmpToggle((map) => {
-                    if (!map) {
-                        if (down) {
-                            map = {};
-                        } else {
-                            return map;
-                        }
-                    }
-                    if (map[key]?.over) {
-                        return map;
-                    }
-                    return {
-                        ...map,
-                        [key]: {
-                            newv: !(
-                                map[key]?.newv ??
-                                state.sections[section].pairs[pair]
-                            ),
-                            section,
-                            pair,
-                            over: true,
-                        },
-                    };
-                });
-            },
-        [state],
-    );
-    const onMouseOut = useCallback(
-        (section: number, pair: string) => () => {
-            const key = `${section}:${pair}`;
-            setTmpToggle((map) => {
-                if (!map) return map;
-                if (!map[key]?.over) {
-                    return map;
-                }
-                return { ...map, [key]: { ...map[key], over: false } };
-            });
-        },
-        [state],
+    const [slide, setSlide] = useState(
+        null as
+            | null
+            | { type: 'add'; items: Slide[] }
+            | { type: 'remove'; pairs: { pair: string; section: number }[] },
     );
 
     const shrink = 0.1;
@@ -291,14 +265,27 @@ export const App2 = () => {
                         : missing
                 }
                 strokeWidth={0.1}
+                onMouseMove={() => {
+                    setSlide((slide) =>
+                        slide?.type === 'remove'
+                            ? {
+                                  ...slide,
+                                  pairs: [
+                                      ...slide.pairs,
+                                      { section, pair: pk },
+                                  ],
+                              }
+                            : slide,
+                    );
+                }}
                 // onClick={
                 //     connectors[pk] == null
                 //         ? () => dispatch({ type: 'toggle', pair: pk, section })
                 //         : undefined
                 // }
-                onMouseDown={onMove(section, pk, true)}
-                onMouseMove={onMove(section, pk)}
-                onMouseOut={onMouseOut(section, pk)}
+                // onMouseDown={onMove(section, pk, true)}
+                // onMouseMove={onMove(section, pk)}
+                // onMouseOut={onMouseOut(section, pk)}
                 style={
                     connectors[pk] == null ? { cursor: 'pointer' } : undefined
                 }
@@ -354,9 +341,7 @@ export const App2 = () => {
         }
     };
 
-    const sections = tmpToggle
-        ? mergeTmp(tmpToggle, state.sections)
-        : state.sections;
+    const sections = slide ? mergeTmp(slide, state.sections) : state.sections;
 
     const singles: { [key: string]: boolean } = {};
     sections.forEach(({ pairs, rows }, i) => {
@@ -370,6 +355,8 @@ export const App2 = () => {
         };
         parsePairs(pairs).forEach((pair) => pair.map(add));
     });
+
+    const rects: { section: number; top: number; bottom: number }[] = [];
 
     let yoff = 0;
     sections.forEach(({ pairs, rows }, i) => {
@@ -397,8 +384,30 @@ export const App2 = () => {
                 }
             }
         }
+        if (
+            slide?.type === 'add' &&
+            slide.items[slide.items.length - 1].section === i
+        ) {
+            cartesian.front.push(
+                <circle
+                    cx={slide.items[slide.items.length - 1].x}
+                    cy={slide.items[slide.items.length - 1].y + yoff}
+                    r={0.2}
+                    fill="red"
+                    key="slide"
+                />,
+            );
+        }
+        const between = 0.4;
+
         const oldYoff = yoff;
-        yoff += rows - 1 + 0.4;
+        yoff += rows - 1 + between;
+
+        rects.push({
+            section: i,
+            top: oldYoff,
+            bottom: yoff - between,
+        });
 
         const sectionTheta = (i / sections.length) * Math.PI * 2 + Math.PI / 2;
         const nsectionTheta =
@@ -463,10 +472,74 @@ export const App2 = () => {
                     width={W + m * 2}
                     height={H + m * 2}
                     onMouseDown={(evt) => {
-                        setTmpToggle({});
+                        if (evt.shiftKey) {
+                            setSlide({ type: 'remove', pairs: [] });
+                        } else {
+                            const pos = svgPos(evt);
+                            if (pos.x >= m) {
+                                const found = closest(
+                                    relPos(pos, m, scale),
+                                    rects,
+                                );
+                                setSlide(
+                                    found
+                                        ? { type: 'add', items: [found] }
+                                        : null,
+                                );
+                            }
+                        }
+                    }}
+                    onMouseMove={(evt) => {
+                        const pos = svgPos(evt);
+                        if (pos.x >= m) {
+                            setSlide((slide) => {
+                                if (!slide || slide.type !== 'add')
+                                    return slide;
+                                const found = closest(
+                                    relPos(pos, m, scale),
+                                    rects,
+                                );
+                                if (!found) return slide;
+                                const at = slide.items.findIndex(
+                                    (s) =>
+                                        s.section === found.section &&
+                                        s.x === found.x &&
+                                        s.y === found.y,
+                                );
+                                if (at === slide.items.length - 1) {
+                                    return slide;
+                                }
+                                if (at !== -1) {
+                                    return {
+                                        type: 'add',
+                                        items: slide.items.slice(0, at + 1),
+                                    };
+                                }
+                                const last =
+                                    slide.items[slide.items.length - 1];
+                                if (neighboring(last, found, state.sections)) {
+                                    return {
+                                        type: 'add',
+                                        items: [...slide.items, found],
+                                    };
+                                }
+                                return slide;
+                            });
+                        }
                     }}
                     onMouseUp={(evt) => {
-                        setTmpToggle(null);
+                        if (slide?.type === 'add') {
+                            dispatch({
+                                type: 'slide',
+                                slide: slide.items,
+                            });
+                        } else if (slide?.type === 'remove') {
+                            dispatch({
+                                type: 'remove',
+                                pairs: slide.pairs,
+                            });
+                        }
+                        setSlide(null);
                     }}
                 >
                     <g transform={`translate(${m},${m})`}>
@@ -495,11 +568,89 @@ export const App2 = () => {
                     Clear
                 </button>
             </div>
+            {JSON.stringify(slide)}
         </div>
     );
 };
 
+export type Slide = {
+    section: number;
+    x: number;
+    y: number;
+};
+
+const neighboring = (one: Slide, two: Slide, sections: Section[]) => {
+    if (one.x !== two.x) {
+        return (
+            one.section === two.section &&
+            one.y === two.y &&
+            Math.abs(one.x - two.x) === 1
+        );
+    }
+    if (one.section !== two.section) {
+        // one then two
+        if (one.section === two.section - 1) {
+            return one.y === sections[one.section].rows - 1 && two.y === 0;
+        }
+        // two then one
+        if (one.section === two.section + 1) {
+            return two.y === sections[two.section].rows - 1 && one.y === 0;
+        }
+        if (one.section === 0 && two.section === sections.length - 1) {
+            return two.y === sections[two.section].rows - 1 && one.y === 0;
+        }
+        if (two.section === 0 && one.section === sections.length - 1) {
+            return one.y === sections[one.section].rows - 1 && two.y === 0;
+        }
+        return false;
+    }
+    return Math.abs(one.y - two.y) === 1;
+};
+
+export type Rect = {
+    section: number;
+    top: number;
+    bottom: number;
+};
+
+const closest = (
+    pos: Coord,
+    rects: Rect[],
+    // m: number,
+    // scale: number,
+) => {
+    for (let rect of rects) {
+        if (pos.y >= rect.top && pos.y <= rect.bottom) {
+            return {
+                section: rect.section,
+                x: Math.round(pos.x),
+                y: Math.round(pos.y - rect.top),
+            };
+        }
+    }
+    return null;
+};
+
+const svgPos = (evt: React.MouseEvent<SVGSVGElement>) => {
+    const box = evt.currentTarget.getBoundingClientRect();
+    return {
+        x: evt.clientX - box.left,
+        y: evt.clientY - box.top,
+    };
+};
+
 export const exact = (n: number) => Math.round(n) === n;
+
+function relPos(
+    pos: { x: number; y: number },
+    m: number,
+    scale: number,
+): Coord {
+    return {
+        x: (pos.x - m) / scale,
+        y: (pos.y - m) / scale,
+    };
+}
 
 function parsePairs(pairs: State['sections'][0]['pairs']) {
     return Object.keys(pairs)
@@ -514,22 +665,30 @@ const pairsToObject = (pairs: [Coord, Coord][]) => {
 };
 
 function mergeTmp(
-    tmpToggle: {
-        [key: string]: {
-            section: number;
-            pair: string;
-            newv: boolean;
-            over: boolean;
-        };
-    },
+    slide:
+        | { items: Slide[]; type: 'add' }
+        | { type: 'remove'; pairs: { pair: string; section: number }[] },
     sections: Section[],
 ) {
     sections = sections.map(({ pairs, rows }) => ({
         pairs: { ...pairs },
         rows,
     }));
-    Object.values(tmpToggle).forEach(({ section, pair, newv }) => {
-        sections[section].pairs[pair] = newv;
-    });
+    if (slide.type === 'add') {
+        for (let i = 1; i < slide.items.length; i++) {
+            const last = slide.items[i - 1];
+            const one = slide.items[i];
+            if (last.section === one.section) {
+                sections[last.section].pairs[pairKey(last, one)] = true;
+            }
+        }
+    } else {
+        slide.pairs.forEach(({ pair, section }) => {
+            sections[section].pairs[pair] = false;
+        });
+    }
+    // Object.values(tmpToggle).forEach(({ section, pair, newv }) => {
+    //     sections[section].pairs[pair] = newv;
+    // });
     return sections;
 }
