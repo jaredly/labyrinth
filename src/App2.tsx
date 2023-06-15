@@ -267,7 +267,10 @@ export const App2 = () => {
                 strokeWidth={0.1}
                 onMouseMove={() => {
                     setSlide((slide) =>
-                        slide?.type === 'remove'
+                        slide?.type === 'remove' &&
+                        !slide.pairs.find(
+                            (p) => p.section === section && p.pair === pk,
+                        )
                             ? {
                                   ...slide,
                                   pairs: [
@@ -619,14 +622,19 @@ const closest = (
     // m: number,
     // scale: number,
 ) => {
-    for (let rect of rects) {
-        if (pos.y >= rect.top && pos.y <= rect.bottom) {
-            return {
-                section: rect.section,
-                x: Math.round(pos.x),
-                y: Math.round(pos.y - rect.top),
-            };
+    for (let i = 0; i < rects.length; i++) {
+        const rect = rects[i];
+        if (i < rects.length - 1) {
+            const next = (rect.bottom + rects[i + 1].top) / 2;
+            if (pos.y >= next) {
+                continue;
+            }
         }
+        return {
+            section: rect.section,
+            x: Math.round(pos.x),
+            y: Math.round(pos.y - rect.top),
+        };
     }
     return null;
 };
