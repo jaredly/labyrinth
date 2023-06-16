@@ -31,16 +31,10 @@ export function renderCart2(
     singles: { [key: string]: boolean },
     dispatch: React.Dispatch<Action>,
 ) {
-    const W = 800;
     const shrink = 0.1;
     const cartesian: Grouped = { slop: [], back: [], mid: [], front: [] };
 
-    const between = 1;
-    const aspect = vwidth / (rowTotal + sections.length + 10);
-    const H = W / aspect;
     const m = 100;
-
-    const scale = W / vwidth;
 
     type GridPoint = { ring: number; row: number; section: number };
     const grid: GridPoint[][] = [];
@@ -61,6 +55,13 @@ export function renderCart2(
     grid.push(...grid.slice(2, 4));
 
     const cr = 0;
+
+    // const between = 1;
+    // const aspect = vwidth / (rowTotal + sections.length + 10);
+    const W = 800;
+    const H = W / (grid.length / grid[0].length);
+    // const H = W / aspect;
+    const scale = H / vwidth;
 
     const lineMe = (c1: Coord, c2: Coord) => {
         const p1 = grid[c1.x]?.[c1.y];
@@ -155,8 +156,8 @@ export function renderCart2(
 
     return (
         <svg
-            width={H + m * 2}
-            height={W + m * 2}
+            width={W + m * 2}
+            height={H + m * 2}
             onMouseUp={(evt) => {
                 if (slide?.type === 'add2') {
                     setSlide(null);

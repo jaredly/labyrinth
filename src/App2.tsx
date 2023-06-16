@@ -308,7 +308,7 @@ function calcBounds(state: State) {
             width = Math.max(width, p1.x + 1, p2.x + 1);
         });
     });
-    const vwidth = Math.ceil((width + 1) / 3) * 3;
+    const vwidth = Math.ceil((width + 2) / 3) * 3;
     return { vwidth, width, mx, rowTotal };
 }
 
