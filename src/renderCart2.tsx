@@ -14,6 +14,7 @@ import {
     neighboring,
     ungroup,
 } from './App2';
+import { Addliness } from './Addliness';
 
 const sectionPairKey = (section: number, ring: number, row: number) =>
     `${section}:${ring},${row}`;
@@ -217,6 +218,14 @@ export function renderCart2(
             <g transform={`translate(${m},${m})`}>
                 {ungroup(cartesian)}
                 <g transform={`scale(${scale})`}></g>
+                {slide ? null : (
+                    <Addliness
+                        dispatch={dispatch}
+                        state={state}
+                        grid={grid}
+                        scale={scale}
+                    />
+                )}
             </g>
         </svg>
     );

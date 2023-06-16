@@ -5,10 +5,11 @@ So, I want to change the orientation.
 And change the way I calculate where I think you're going.
 and do a more convincing loop-around.
 
-- [ ] click + drag to make it all up
-- [ ] show N & S
+- [x] click + drag to make it all up
 - [ ] add "rows" to sections
 - [ ] add/remove "sections"
+- [ ] show N & S
+- [ ] round round round round round
 
 
 # V3

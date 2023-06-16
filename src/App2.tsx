@@ -71,7 +71,8 @@ export type Action =
     | { type: 'remove'; pairs: { section: number; pair: string }[] }
     | { type: 'slide'; slide: SecionCoord[] }
     | { type: 'clear' }
-    | { type: 'add'; row: number; high: boolean }
+    | { type: 'add'; section: number; row: number }
+    | { type: 'rmrow'; section: number; row: number }
     | { type: 'sections'; sections: State['sections'] };
 
 const reduce = (state: State, action: Action): State => {
@@ -118,6 +119,46 @@ const reduce = (state: State, action: Action): State => {
                 },
             };
             return { ...state, sections };
+        }
+        case 'rmrow': {
+            return {
+                ...state,
+                sections: state.sections.map((s, i) => {
+                    if (i !== action.section) {
+                        return s;
+                    }
+                    const pairs = parsePairs(s.pairs).map(
+                        ([p1, p2]): [Coord, Coord] =>
+                            p1.y >= action.row
+                                ? [
+                                      { y: p1.y - 1, x: p1.x },
+                                      { y: p2.y - 1, x: p2.x },
+                                  ]
+                                : [p1, p2],
+                    );
+                    return { pairs: pairsToObject(pairs), rows: s.rows - 1 };
+                }),
+            };
+        }
+        case 'add': {
+            return {
+                ...state,
+                sections: state.sections.map((s, i) => {
+                    if (i !== action.section) {
+                        return s;
+                    }
+                    const pairs = parsePairs(s.pairs).map(
+                        ([p1, p2]): [Coord, Coord] =>
+                            p1.y >= action.row
+                                ? [
+                                      { y: p1.y + 1, x: p1.x },
+                                      { y: p2.y + 1, x: p2.x },
+                                  ]
+                                : [p1, p2],
+                    );
+                    return { pairs: pairsToObject(pairs), rows: s.rows + 1 };
+                }),
+            };
         }
     }
     console.info('unandled', action);
@@ -215,7 +256,6 @@ export const App2 = () => {
                     Clear
                 </button>
             </div>
-            {/* {JSON.stringify(slide)} */}
         </div>
     );
 };
