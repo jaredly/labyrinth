@@ -8,7 +8,7 @@ and do a more convincing loop-around.
 - [x] click + drag to make it all up
 - [x] add "rows" to sections
 - [x] add/remove "sections"
-- [ ] export pls
+- [x] export pls
 - [ ] rainbowwwwwww
 - [ ] show N & S
 - [ ] round round round round round

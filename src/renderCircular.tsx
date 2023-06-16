@@ -10,7 +10,77 @@ import {
     pairKey,
     missing,
     ungroup,
+    parsePairs,
 } from './App2';
+import { GridPoint } from './renderCart2';
+
+export const organizeLine = (
+    rings: number,
+    sections: Section[],
+    singles: { [key: string]: number },
+) => {
+    const withConnectors = { ...singles };
+    const connected: { [key: string]: string[] } = {};
+    const connect = (k1: string, k2: string) => {
+        if (!connected[k1]) {
+            connected[k1] = [k2];
+        } else {
+            connected[k1].push(k2);
+        }
+        if (!connected[k2]) {
+            connected[k2] = [k1];
+        } else {
+            connected[k2].push(k1);
+        }
+    };
+
+    sections.forEach(({ pairs }, i) => {
+        for (let ring = 0; ring < rings; ring++) {
+            const k = `${i}:${ring},0`;
+            const sn = (i + 1) % sections.length;
+            const k2 = `${sn}:${ring},${sections[sn].rows - 1}`;
+            if (singles[k] || singles[k2]) {
+                withConnectors[k] = (withConnectors[k] || 0) + 1;
+                withConnectors[k2] = (withConnectors[k2] || 0) + 1;
+                connect(k, k2);
+            }
+        }
+
+        parsePairs(pairs).forEach(([p1, p2]) => {
+            connect(`${i}:${p1.x},${p1.y}`, `${i}:${p2.x},${p2.y}`);
+        });
+    });
+
+    const ends = Object.entries(withConnectors)
+        .filter(([a, b]) => b === 1)
+        .map(([k, v]) => {
+            const [section, pos] = k.split(':');
+            const [ring, row] = pos.split(',');
+            return {
+                section,
+                pos: { ring: +ring, row: +row },
+            };
+        })
+        .sort((a, b) => a.pos.ring - b.pos.ring);
+    if (!ends || ends[0].pos.ring !== 0) {
+        return null;
+    }
+
+    const line: string[] = [
+        `${ends[0].section}:${ends[0].pos.ring},${ends[0].pos.row}`,
+    ];
+    while (true) {
+        const last = line[line.length - 1];
+        if (connected[last].length !== 1) {
+            break;
+        }
+        const got = connected[last][0];
+        delete connected[last];
+        connected[got] = connected[got].filter((k) => k !== last);
+        line.push(got);
+    }
+    return line;
+};
 
 export function renderCircular(
     ref: React.RefObject<SVGSVGElement>,
@@ -18,7 +88,8 @@ export function renderCircular(
     width: number,
     dispatch: React.Dispatch<Action>,
     sections: Section[],
-    singles: { [key: string]: boolean },
+    singles: { [key: string]: number },
+    hoverPoint: GridPoint | null,
 ) {
     const VW = 300;
     const vm = 5;
@@ -40,7 +111,6 @@ export function renderCircular(
         const pk = pairKey(p1, p2);
         const pos = pairs[pk] ? 'front' : 'back';
 
-        // console.log(sm);
         circular[pos].push(
             <path
                 key={`${section} ${pk}`}
@@ -97,6 +167,21 @@ export function renderCircular(
         const nsectionTheta =
             ((i + 1) / sections.length) * Math.PI * 2 + Math.PI / 2;
         // console.log(singles);
+
+        if (hoverPoint?.section === i) {
+            const pos = calcLocation({
+                pos: { x: width - hoverPoint.ring, y: hoverPoint.row },
+                sectionTheta,
+                dr,
+                r0,
+                rows: sections[i].rows,
+            });
+            const x = Math.cos(pos.t) * pos.r + VW / 2;
+            const y = Math.sin(pos.t) * pos.r + VW / 2;
+
+            circular.front.push(<circle cx={x} cy={y} r={5} fill="red" />);
+        }
+
         for (let x = 0; x < width; x++) {
             const k1 = `${i}:${x},${rows - 1}`;
             const k2 = `${(i + 1) % sections.length}:${x},${0}`;

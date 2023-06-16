@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { reduceLocalStorage } from './App';
-import { renderCircular } from './renderCircular';
-import { renderCartesian } from './renderCartesian';
+import { organizeLine, renderCircular } from './renderCircular';
 import { GridPoint, buildGrid, renderCart2 } from './renderCart2';
 import { ExportButton } from './ExportButton';
+import { reduce } from './reduce';
 export type Coord = { x: number; y: number };
 
 export type Section = {
@@ -80,132 +80,6 @@ export type Action =
     | { type: 'rmrow'; section: number; row: number }
     | { type: 'sections'; sections: State['sections'] };
 
-const reduce = (state: State, action: Action): State => {
-    switch (action.type) {
-        case 'clear':
-            return {
-                ...state,
-                sections: state.sections.map((s) => ({ ...s, pairs: {} })),
-            };
-        case 'sections':
-            return { ...state, sections: action.sections };
-        case 'remove': {
-            const sections = state.sections.map((s) => ({
-                ...s,
-                pairs: { ...s.pairs },
-            }));
-            action.pairs.forEach(({ section, pair }) => {
-                delete sections[section].pairs[pair];
-            });
-            return { ...state, sections };
-        }
-        case 'slide': {
-            const sections = state.sections.map((s) => ({
-                ...s,
-                pairs: { ...s.pairs },
-            }));
-            for (let i = 1; i < action.slide.length; i++) {
-                const last = action.slide[i - 1];
-                const one = action.slide[i];
-                if (last.section === one.section) {
-                    sections[last.section].pairs[pairKey(last, one)] = true;
-                }
-            }
-            return { ...state, sections };
-        }
-        case 'toggle': {
-            const sections = state.sections.slice();
-            sections[action.section] = {
-                ...state.sections[action.section],
-                pairs: {
-                    ...state.sections[action.section].pairs,
-                    [action.pair]:
-                        !state.sections[action.section].pairs[action.pair],
-                },
-            };
-            return { ...state, sections };
-        }
-        case 'addring': {
-            return {
-                ...state,
-                rings: state.rings + 1,
-                sections: state.sections.map((s) => {
-                    const pairs = parsePairs(s.pairs).map(
-                        ([p1, p2]): [Coord, Coord] =>
-                            p1.x >= action.ring
-                                ? [
-                                      { x: p1.x + 1, y: p1.y },
-                                      { x: p2.x + 1, y: p2.y },
-                                  ]
-                                : [p1, p2],
-                    );
-                    return { pairs: pairsToObject(pairs), rows: s.rows };
-                }),
-            };
-        }
-        case 'rmring': {
-            return {
-                ...state,
-                rings: state.rings - 1,
-                sections: state.sections.map((s) => {
-                    const pairs = parsePairs(s.pairs).map(
-                        ([p1, p2]): [Coord, Coord] =>
-                            p1.x >= action.ring
-                                ? [
-                                      { x: p1.x - 1, y: p1.y },
-                                      { x: p2.x - 1, y: p2.y },
-                                  ]
-                                : [p1, p2],
-                    );
-                    return { pairs: pairsToObject(pairs), rows: s.rows };
-                }),
-            };
-        }
-        case 'rmrow': {
-            return {
-                ...state,
-                sections: state.sections.map((s, i) => {
-                    if (i !== action.section) {
-                        return s;
-                    }
-                    const pairs = parsePairs(s.pairs).map(
-                        ([p1, p2]): [Coord, Coord] =>
-                            p1.y >= action.row
-                                ? [
-                                      { y: p1.y - 1, x: p1.x },
-                                      { y: p2.y - 1, x: p2.x },
-                                  ]
-                                : [p1, p2],
-                    );
-                    return { pairs: pairsToObject(pairs), rows: s.rows - 1 };
-                }),
-            };
-        }
-        case 'add': {
-            return {
-                ...state,
-                sections: state.sections.map((s, i) => {
-                    if (i !== action.section) {
-                        return s;
-                    }
-                    const pairs = parsePairs(s.pairs).map(
-                        ([p1, p2]): [Coord, Coord] =>
-                            p1.y >= action.row
-                                ? [
-                                      { y: p1.y + 1, x: p1.x },
-                                      { y: p2.y + 1, x: p2.x },
-                                  ]
-                                : [p1, p2],
-                    );
-                    return { pairs: pairsToObject(pairs), rows: s.rows + 1 };
-                }),
-            };
-        }
-    }
-    console.info('unandled', action);
-    return state;
-};
-
 export type Grouped = {
     slop: JSX.Element[];
     back: JSX.Element[];
@@ -252,6 +126,8 @@ export const App2 = () => {
         state.rings = 7;
     }
 
+    const [hoverPoint, setHoverPoint] = useState(null as null | GridPoint);
+
     const [slide, setSlide] = useState(null as Slide | null);
 
     const grid: GridPoint[][] = buildGrid(state.sections, bounds.vwidth);
@@ -260,14 +136,14 @@ export const App2 = () => {
         ? mergeTmp(slide, grid, state.sections)
         : state.sections;
 
-    const singles: { [key: string]: boolean } = {};
+    const singles: { [key: string]: number } = {};
     sections.forEach(({ pairs }, i) => {
         const add = ({ x, y }: Coord) => {
             const k = `${i}:${x},${y}`;
             if (singles[k]) {
-                singles[k] = true; // false;
+                singles[k]++;
             } else if (singles[k] == null) {
-                singles[k] = true;
+                singles[k] = 1;
             }
         };
         parsePairs(pairs).forEach((pair) => pair.map(add));
@@ -275,6 +151,9 @@ export const App2 = () => {
 
     const ref = useRef<SVGSVGElement>(null);
     const cref = useRef<SVGSVGElement>(null);
+
+    const line = organizeLine(state.rings, sections, singles);
+    // console.log('line', line);
 
     const cartesian = renderCart2(
         cref,
@@ -286,6 +165,8 @@ export const App2 = () => {
         slide,
         singles,
         dispatch,
+        hoverPoint,
+        setHoverPoint,
     );
 
     return (
@@ -299,6 +180,7 @@ export const App2 = () => {
                     dispatch,
                     sections,
                     singles,
+                    hoverPoint,
                 )}
             </div>
             <div>
@@ -319,65 +201,10 @@ export type SecionCoord = {
 
 export const missing = '#111';
 
-export const neighboring = (
-    one: SecionCoord,
-    two: SecionCoord,
-    sections: Section[],
-) => {
-    if (one.x !== two.x) {
-        return (
-            one.section === two.section &&
-            one.y === two.y &&
-            Math.abs(one.x - two.x) === 1
-        );
-    }
-    if (one.section !== two.section) {
-        // one then two
-        if (one.section === two.section - 1) {
-            return one.y === sections[one.section].rows - 1 && two.y === 0;
-        }
-        // two then one
-        if (one.section === two.section + 1) {
-            return two.y === sections[two.section].rows - 1 && one.y === 0;
-        }
-        if (one.section === 0 && two.section === sections.length - 1) {
-            return two.y === sections[two.section].rows - 1 && one.y === 0;
-        }
-        if (two.section === 0 && one.section === sections.length - 1) {
-            return one.y === sections[one.section].rows - 1 && two.y === 0;
-        }
-        return false;
-    }
-    return Math.abs(one.y - two.y) === 1;
-};
-
 export type Rect = {
     section: number;
     top: number;
     bottom: number;
-};
-
-export const closest = (
-    pos: Coord,
-    rects: Rect[],
-    // m: number,
-    // scale: number,
-) => {
-    for (let i = 0; i < rects.length; i++) {
-        const rect = rects[i];
-        if (i < rects.length - 1) {
-            const next = (rect.bottom + rects[i + 1].top) / 2;
-            if (pos.y >= next) {
-                continue;
-            }
-        }
-        return {
-            section: rect.section,
-            x: Math.round(pos.x),
-            y: Math.round(pos.y - rect.top),
-        };
-    }
-    return null;
 };
 
 export const svgPos = (evt: React.MouseEvent<SVGSVGElement>) => {
@@ -419,13 +246,13 @@ export function relPos(
     };
 }
 
-function parsePairs(pairs: State['sections'][0]['pairs']) {
+export function parsePairs(pairs: State['sections'][0]['pairs']) {
     return Object.keys(pairs)
         .filter((k) => pairs[k])
         .map(parseKey);
 }
 
-const pairsToObject = (pairs: [Coord, Coord][]) => {
+export const pairsToObject = (pairs: [Coord, Coord][]) => {
     const obj: State['sections'][0]['pairs'] = {};
     pairs.forEach((pair) => (obj[pairKey(pair[0], pair[1])] = true));
     return obj;

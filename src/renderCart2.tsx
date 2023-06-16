@@ -7,11 +7,6 @@ import {
     Grouped,
     Coord,
     pairKey,
-    missing,
-    svgPos,
-    closest,
-    relPos,
-    neighboring,
     ungroup,
 } from './App2';
 import { AddRing, Addliness } from './Addliness';
@@ -32,12 +27,12 @@ export function renderCart2(
         rowTotal,
     }: { vwidth: number; width: number; rowTotal: number },
     slide: Slide | null,
-    singles: { [key: string]: boolean },
+    singles: { [key: string]: number },
     dispatch: React.Dispatch<Action>,
+    hoverPoint: null | GridPoint,
+    setHoverPoint: (p: GridPoint | null) => void,
 ) {
     const cartesian: Grouped = { slop: [], back: [], mid: [], front: [] };
-
-    const [hoverPoint, setHoverPoint] = useState(null as null | GridPoint);
 
     const m = 100;
 
