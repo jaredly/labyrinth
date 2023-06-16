@@ -36,7 +36,7 @@ export function renderCart2(
     const cartesian: Grouped = { slop: [], back: [], mid: [], front: [] };
 
     const between = 1;
-    const aspect = vwidth / (rowTotal + (sections.length + 1) * between);
+    const aspect = vwidth / (rowTotal + sections.length + 10);
     const H = W / aspect;
     const m = 100;
 
@@ -57,7 +57,8 @@ export function renderCart2(
 
     // const locations: Coord[][] = [];
 
-    grid.push(...grid.slice(0, 2));
+    grid.unshift(...grid.slice(-2));
+    grid.push(...grid.slice(2, 4));
 
     const cr = 0;
 
@@ -124,28 +125,111 @@ export function renderCart2(
         items.forEach((point, gy) => {
             const needed =
                 singles[`${point.section}:${point.ring},${point.row}`];
+            const slid =
+                slide?.type === 'add2' &&
+                slide.items.some((s) => s.x === gx && s.y === gy);
             cartesian.front.push(
                 <circle
+                    key={`show-${gx}-${gy}`}
                     cx={gx * scale}
                     cy={gy * scale}
                     r={0.07 * scale}
-                    fill={needed ? 'red' : '#222'}
+                    fill={slid ? 'green' : needed ? 'red' : '#222'}
                     // opacity={0.8}
                 />,
                 <circle
+                    key={`touch-${gx}-${gy}`}
                     cx={gx * scale}
                     cy={gy * scale}
                     r={0.2 * scale}
                     fill={'transparent'}
                     style={{ cursor: 'pointer' }}
                     className="hover"
+                    onMouseDown={(evt) => {
+                        setSlide({ type: 'add2', items: [{ x: gx, y: gy }] });
+                    }}
                 />,
             );
         });
     });
 
     return (
-        <svg width={W + m * 2} height={H + m * 2}>
+        <svg
+            width={H + m * 2}
+            height={W + m * 2}
+            onMouseUp={(evt) => {
+                if (slide?.type === 'add2') {
+                    setSlide(null);
+                    dispatch({
+                        type: 'slide',
+                        slide: slide.items.map(({ x, y }) => {
+                            const { ring, row, section } = grid[x][y];
+                            return { section, x: ring, y: row };
+                        }),
+                    });
+                }
+            }}
+            onMouseMove={(evt) => {
+                const box = evt.currentTarget.getBoundingClientRect();
+                const x = evt.clientX - box.left - m;
+                const y = evt.clientY - box.top - m;
+                if (slide?.type !== 'add2') {
+                    return;
+                }
+                const last = slide.items[slide.items.length - 1];
+                if (!last) {
+                    return;
+                }
+                const dirs = [
+                    { x: 0, y: 0 },
+                    { x: 0, y: -1 },
+                    { x: 0, y: 1 },
+                    { x: -1, y: 0 },
+                    { x: 1, y: 0 },
+                ];
+                let best = null as null | {
+                    diff: number;
+                    x: number;
+                    y: number;
+                };
+                dirs.forEach((d) => {
+                    if (
+                        last.x + d.x < 0 ||
+                        last.x + d.x >= grid.length ||
+                        last.y + d.y < 0 ||
+                        last.y + d.y >= vwidth
+                    ) {
+                        return;
+                    }
+                    const dx = (last.x + d.x) * scale - x;
+                    const dy = (last.y + d.y) * scale - y;
+                    const diff = Math.sqrt(dx * dx + dy * dy);
+                    if (!best || best.diff > diff) {
+                        best = { diff, x: d.x, y: d.y };
+                    }
+                });
+                if (!best || (best.x === 0 && best.y === 0)) {
+                    return;
+                }
+                const at = slide.items.findIndex(
+                    (s) => s.x == last.x + best!.x && s.y === last.y + best!.y,
+                );
+                if (at !== -1) {
+                    setSlide({
+                        type: 'add2',
+                        items: slide.items.slice(0, at + 1),
+                    });
+                } else {
+                    setSlide({
+                        type: 'add2',
+                        items: [
+                            ...slide.items,
+                            { x: last.x + best.x, y: last.y + best.y },
+                        ],
+                    });
+                }
+            }}
+        >
             <g transform={`translate(${m},${m})`}>
                 {ungroup(cartesian)}
                 <g transform={`scale(${scale})`}></g>

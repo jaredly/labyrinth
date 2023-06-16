@@ -210,7 +210,7 @@ export const App2 = () => {
                     Clear
                 </button>
             </div>
-            {JSON.stringify(slide)}
+            {/* {JSON.stringify(slide)} */}
         </div>
     );
 };
