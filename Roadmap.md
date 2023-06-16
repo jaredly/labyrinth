@@ -1,4 +1,11 @@
 
+# V4???
+
+So, I want to change the orientation.
+And change the way I calculate where I think you're going.
+and do a more convincing loop-around.
+
+
 # V3
 
 - [x] basic cart

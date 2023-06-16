@@ -37,7 +37,7 @@ export const Addliness = ({
                 onClick={() => {
                     if (pos) {
                         if (exact(pos.row / 2)) {
-                            dispatch({ type: 'remove', row: pos.row / 2 - 1 });
+                            // dispatch({ type: 'remove', row: pos.row / 2 - 1 });
                         } else {
                             const row = Math.floor(pos.row / 2);
                             const high = pos.row / 2 > row + 0.5;
