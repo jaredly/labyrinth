@@ -68,7 +68,7 @@ export const migrateState = (state: State) => {
 export type Action =
     | { type: 'toggle'; pair: string; section: number }
     | { type: 'remove'; pairs: { section: number; pair: string }[] }
-    | { type: 'slide'; slide: Slide[] }
+    | { type: 'slide'; slide: SecionCoord[] }
     | { type: 'clear' }
     | { type: 'add'; row: number; high: boolean }
     | { type: 'sections'; sections: State['sections'] };
@@ -137,10 +137,10 @@ export const ungroup = (g: Grouped) => [
     ...g.front,
 ];
 
-export type SlideT =
+export type Slide =
     | {
           type: 'add';
-          items: Slide[];
+          items: SecionCoord[];
       }
     | {
           type: 'remove';
@@ -161,13 +161,12 @@ export const App2 = () => {
 
     var bounds = calcBounds(state);
 
-    const W = 800;
-    const [slide, setSlide] = useState(null as SlideT | null);
+    const [slide, setSlide] = useState(null as Slide | null);
 
     const sections = slide ? mergeTmp(slide, state.sections) : state.sections;
 
     const singles: { [key: string]: boolean } = {};
-    sections.forEach(({ pairs, rows }, i) => {
+    sections.forEach(({ pairs }, i) => {
         const add = ({ x, y }: Coord) => {
             const k = `${i}:${x},${y}`;
             if (singles[k]) {
@@ -184,11 +183,8 @@ export const App2 = () => {
         setSlide,
         sections,
         bounds,
-        // vwidth,
         slide,
-        // width,
         singles,
-        W,
         dispatch,
     );
 
@@ -214,7 +210,7 @@ export const App2 = () => {
     );
 };
 
-export type Slide = {
+export type SecionCoord = {
     section: number;
     x: number;
     y: number;
@@ -222,7 +218,11 @@ export type Slide = {
 
 export const missing = '#111';
 
-export const neighboring = (one: Slide, two: Slide, sections: Section[]) => {
+export const neighboring = (
+    one: SecionCoord,
+    two: SecionCoord,
+    sections: Section[],
+) => {
     if (one.x !== two.x) {
         return (
             one.section === two.section &&
@@ -330,7 +330,7 @@ const pairsToObject = (pairs: [Coord, Coord][]) => {
     return obj;
 };
 
-function mergeTmp(slide: SlideT, sections: Section[]) {
+function mergeTmp(slide: Slide, sections: Section[]) {
     sections = sections.map(({ pairs, rows }) => ({
         pairs: { ...pairs },
         rows,

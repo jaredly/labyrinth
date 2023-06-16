@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     State,
-    SlideT,
+    Slide,
     Section,
     Action,
     Grouped,
@@ -17,18 +17,18 @@ import {
 
 export function renderCartesian(
     state: State,
-    setSlide: React.Dispatch<React.SetStateAction<SlideT | null>>,
+    setSlide: React.Dispatch<React.SetStateAction<Slide | null>>,
     sections: Section[],
     {
         vwidth,
         width,
         height,
     }: { vwidth: number; width: number; height: number },
-    slide: SlideT | null,
+    slide: Slide | null,
     singles: { [key: string]: boolean },
-    W: number,
     dispatch: React.Dispatch<Action>,
 ) {
+    const W = 800;
     const shrink = 0.1;
 
     const cartesian: Grouped = { slop: [], back: [], mid: [], front: [] };
@@ -39,9 +39,6 @@ export function renderCartesian(
         p2: Coord,
         pairs: State['sections'][0]['pairs'],
     ) => {
-        const sectionTheta =
-            (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
-
         const pk = pairKey(p1, p2);
         const pos = pairs[pk] ? 'front' : 'back';
         const xs = p1.x === p2.x ? 0 : shrink;
