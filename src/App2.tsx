@@ -265,6 +265,14 @@ export const App2 = () => {
                         : missing
                 }
                 strokeWidth={0.1}
+                onMouseDown={(evt) => {
+                    if (evt.shiftKey) {
+                        setSlide({
+                            type: 'remove',
+                            pairs: [{ section, pair: pk }],
+                        });
+                    }
+                }}
                 onMouseMove={() => {
                     setSlide((slide) =>
                         slide?.type === 'remove' &&
