@@ -13,6 +13,7 @@ import {
 } from './App2';
 
 export function renderCircular(
+    ref: React.RefObject<SVGSVGElement>,
     state: State,
     width: number,
     dispatch: React.Dispatch<Action>,
@@ -137,6 +138,7 @@ export function renderCircular(
 
     return (
         <svg
+            ref={ref}
             width={VW + vm * 2}
             height={VW + vm * 2}
             style={{ marginTop: 50 - vm, backgroundColor: '#0a0a0a' }}

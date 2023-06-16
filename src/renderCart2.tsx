@@ -21,6 +21,7 @@ const sectionPairKey = (section: number, ring: number, row: number) =>
 export type GridPoint = { ring: number; row: number; section: number };
 
 export function renderCart2(
+    ref: React.RefObject<SVGSVGElement>,
     state: State,
     grid: GridPoint[][],
     setSlide: React.Dispatch<React.SetStateAction<Slide | null>>,
@@ -155,6 +156,7 @@ export function renderCart2(
 
     return (
         <svg
+            ref={ref}
             width={W + m * 2}
             height={H + m * 2}
             onMouseUp={(evt) => {

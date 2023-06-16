@@ -9,7 +9,7 @@ export function ExportButton({
 }: {
     svg: React.RefObject<SVGSVGElement>;
     csvg: React.RefObject<SVGSVGElement>;
-    state: State;
+    state: any;
 }) {
     return (
         <button
@@ -17,11 +17,16 @@ export function ExportButton({
                 const svgText = svg.current!.outerHTML;
                 const blob = new Blob(
                     [
-                        `<svg height="${H}" width="${
-                            W * 2
-                        }" xmlns="http://www.w3.org/2000/svg">
+                        `<svg height="${csvg.current?.getAttribute(
+                            'height',
+                        )}" width="${
+                            +csvg.current!.getAttribute('width')! +
+                            +svg.current!.getAttribute('width')!
+                        }" xmlns="http://www.w3.org/2000/svg" style="background: black">
                     ${svg.current!.innerHTML}
-                    <g transform="translate(${W} 0)">
+                    <g transform="translate(${svg.current!.getAttribute(
+                        'width',
+                    )} 0)">
                     ${csvg.current!.outerHTML}
                     </g>
                     </svg>\n${PREFIX}${JSON.stringify(state)}${SUFFIX}`,

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { reduceLocalStorage } from './App';
 import { renderCircular } from './renderCircular';
 import { renderCartesian } from './renderCartesian';
 import { GridPoint, buildGrid, renderCart2 } from './renderCart2';
+import { ExportButton } from './ExportButton';
 export type Coord = { x: number; y: number };
 
 export type Section = {
@@ -272,7 +273,11 @@ export const App2 = () => {
         parsePairs(pairs).forEach((pair) => pair.map(add));
     });
 
+    const ref = useRef<SVGSVGElement>(null);
+    const cref = useRef<SVGSVGElement>(null);
+
     const cartesian = renderCart2(
+        cref,
         state,
         grid,
         setSlide,
@@ -288,6 +293,7 @@ export const App2 = () => {
             <div style={{ display: 'flex', alignItems: 'flex-start' }}>
                 {cartesian}
                 {renderCircular(
+                    ref,
                     state,
                     bounds.width,
                     dispatch,
@@ -299,6 +305,7 @@ export const App2 = () => {
                 <button onClick={() => dispatch({ type: 'clear' })}>
                     Clear
                 </button>
+                <ExportButton csvg={cref} svg={ref} state={state} />
             </div>
         </div>
     );

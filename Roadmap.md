@@ -6,8 +6,10 @@ And change the way I calculate where I think you're going.
 and do a more convincing loop-around.
 
 - [x] click + drag to make it all up
-- [ ] add "rows" to sections
-- [ ] add/remove "sections"
+- [x] add "rows" to sections
+- [x] add/remove "sections"
+- [ ] export pls
+- [ ] rainbowwwwwww
 - [ ] show N & S
 - [ ] round round round round round
 
