@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { reduceLocalStorage } from './App';
 import { renderCircular } from './renderCircular';
 import { renderCartesian } from './renderCartesian';
-import { renderCart2 } from './renderCart2';
+import { GridPoint, buildGrid, renderCart2 } from './renderCart2';
 export type Coord = { x: number; y: number };
 
 export type Section = {
@@ -168,7 +168,11 @@ export const App2 = () => {
 
     const [slide, setSlide] = useState(null as Slide | null);
 
-    const sections = slide ? mergeTmp(slide, state.sections) : state.sections;
+    const grid: GridPoint[][] = buildGrid(state.sections, bounds.vwidth);
+
+    const sections = slide
+        ? mergeTmp(slide, grid, state.sections)
+        : state.sections;
 
     const singles: { [key: string]: boolean } = {};
     sections.forEach(({ pairs }, i) => {
@@ -185,6 +189,7 @@ export const App2 = () => {
 
     const cartesian = renderCart2(
         state,
+        grid,
         setSlide,
         sections,
         bounds,
@@ -335,7 +340,7 @@ const pairsToObject = (pairs: [Coord, Coord][]) => {
     return obj;
 };
 
-function mergeTmp(slide: Slide, sections: Section[]) {
+function mergeTmp(slide: Slide, grid: GridPoint[][], sections: Section[]) {
     sections = sections.map(({ pairs, rows }) => ({
         pairs: { ...pairs },
         rows,
@@ -346,6 +351,21 @@ function mergeTmp(slide: Slide, sections: Section[]) {
             const one = slide.items[i];
             if (last.section === one.section) {
                 sections[last.section].pairs[pairKey(last, one)] = true;
+            }
+        }
+    } else if (slide.type === 'add2') {
+        for (let i = 1; i < slide.items.length; i++) {
+            const lg = slide.items[i - 1];
+            const og = slide.items[i];
+            const last = grid[lg.x][lg.y];
+            const one = grid[og.x][og.y];
+            if (last.section === one.section) {
+                sections[last.section].pairs[
+                    pairKey(
+                        { x: last.ring, y: last.row },
+                        { x: one.ring, y: one.row },
+                    )
+                ] = true;
             }
         }
     } else if (slide.type === 'remove') {

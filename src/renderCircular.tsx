@@ -128,7 +128,7 @@ export function renderCircular(
                     ).paths.join(' ')}
                     strokeLinecap="round"
                     fill="none"
-                    stroke={needed ? '#007' : '#300'}
+                    stroke={needed ? 'blue' : '#300'}
                     strokeWidth={3}
                 />,
             );

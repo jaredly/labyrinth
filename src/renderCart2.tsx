@@ -17,9 +17,11 @@ import {
 
 const sectionPairKey = (section: number, ring: number, row: number) =>
     `${section}:${ring},${row}`;
+export type GridPoint = { ring: number; row: number; section: number };
 
 export function renderCart2(
     state: State,
+    grid: GridPoint[][],
     setSlide: React.Dispatch<React.SetStateAction<Slide | null>>,
     sections: Section[],
     {
@@ -31,28 +33,9 @@ export function renderCart2(
     singles: { [key: string]: boolean },
     dispatch: React.Dispatch<Action>,
 ) {
-    const shrink = 0.1;
     const cartesian: Grouped = { slop: [], back: [], mid: [], front: [] };
 
     const m = 100;
-
-    type GridPoint = { ring: number; row: number; section: number };
-    const grid: GridPoint[][] = [];
-
-    sections.forEach(({ rows }, i) => {
-        for (let row = 0; row < rows; row++) {
-            const items: GridPoint[] = [];
-            for (let ring = 0; ring < vwidth; ring++) {
-                items.unshift({ ring, row, section: i });
-            }
-            grid.unshift(items);
-        }
-    });
-
-    // const locations: Coord[][] = [];
-
-    grid.unshift(...grid.slice(-2));
-    grid.push(...grid.slice(2, 4));
 
     const cr = 0;
 
@@ -71,7 +54,7 @@ export function renderCart2(
         }
         if (p1.section !== p2.section) {
             const needed =
-                singles[`${p1.section}:${p1.ring},${p1.row}`] &&
+                singles[`${p1.section}:${p1.ring},${p1.row}`] ||
                 singles[`${p2.section}:${p2.ring},${p2.row}`];
             cartesian.back.push(
                 <line
@@ -237,4 +220,21 @@ export function renderCart2(
             </g>
         </svg>
     );
+}
+export function buildGrid(sections: Section[], vwidth: number) {
+    const grid: GridPoint[][] = [];
+
+    sections.forEach(({ rows }, i) => {
+        for (let row = 0; row < rows; row++) {
+            const items: GridPoint[] = [];
+            for (let ring = 0; ring < vwidth; ring++) {
+                items.unshift({ ring, row, section: i });
+            }
+            grid.unshift(items);
+        }
+    });
+
+    grid.unshift(...grid.slice(-2));
+    grid.push(...grid.slice(2, 4));
+    return grid;
 }
