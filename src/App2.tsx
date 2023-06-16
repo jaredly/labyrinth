@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { reduceLocalStorage } from './App';
 import { renderCircular } from './renderCircular';
 import { renderCartesian } from './renderCartesian';
+import { renderCart2 } from './renderCart2';
 export type Coord = { x: number; y: number };
 
 export type Section = {
@@ -143,6 +144,10 @@ export type Slide =
           items: SecionCoord[];
       }
     | {
+          type: 'add2';
+          items: Coord[];
+      }
+    | {
           type: 'remove';
           pairs: {
               pair: string;
@@ -178,7 +183,7 @@ export const App2 = () => {
         parsePairs(pairs).forEach((pair) => pair.map(add));
     });
 
-    const cartesian = renderCartesian(
+    const cartesian = renderCart2(
         state,
         setSlide,
         sections,
@@ -292,9 +297,9 @@ export const exact = (n: number) => Math.round(n) === n;
 function calcBounds(state: State) {
     let mx = 0;
     let width = 5;
-    let height = 0;
+    let rowTotal = 0;
     state.sections.forEach(({ pairs, rows }) => {
-        height += rows;
+        rowTotal += rows;
 
         parsePairs(pairs).forEach(([p1, p2]) => {
             if (p1.x === p2.x) {
@@ -304,7 +309,7 @@ function calcBounds(state: State) {
         });
     });
     const vwidth = Math.ceil((width + 1) / 3) * 3;
-    return { vwidth, width, mx, height };
+    return { vwidth, width, mx, rowTotal };
 }
 
 export function relPos(
@@ -343,7 +348,7 @@ function mergeTmp(slide: Slide, sections: Section[]) {
                 sections[last.section].pairs[pairKey(last, one)] = true;
             }
         }
-    } else {
+    } else if (slide.type === 'remove') {
         slide.pairs.forEach(({ pair, section }) => {
             sections[section].pairs[pair] = false;
         });

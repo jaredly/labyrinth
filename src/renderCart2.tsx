@@ -1,0 +1,155 @@
+import React from 'react';
+import {
+    State,
+    Slide,
+    Section,
+    Action,
+    Grouped,
+    Coord,
+    pairKey,
+    missing,
+    svgPos,
+    closest,
+    relPos,
+    neighboring,
+    ungroup,
+} from './App2';
+
+const sectionPairKey = (section: number, ring: number, row: number) =>
+    `${section}:${ring},${row}`;
+
+export function renderCart2(
+    state: State,
+    setSlide: React.Dispatch<React.SetStateAction<Slide | null>>,
+    sections: Section[],
+    {
+        vwidth,
+        width,
+        rowTotal,
+    }: { vwidth: number; width: number; rowTotal: number },
+    slide: Slide | null,
+    singles: { [key: string]: boolean },
+    dispatch: React.Dispatch<Action>,
+) {
+    const W = 800;
+    const shrink = 0.1;
+    const cartesian: Grouped = { slop: [], back: [], mid: [], front: [] };
+
+    const between = 1;
+    const aspect = vwidth / (rowTotal + (sections.length + 1) * between);
+    const H = W / aspect;
+    const m = 100;
+
+    const scale = W / vwidth;
+
+    type GridPoint = { ring: number; row: number; section: number };
+    const grid: GridPoint[][] = [];
+
+    sections.forEach(({ rows }, i) => {
+        for (let row = 0; row < rows; row++) {
+            const items: GridPoint[] = [];
+            for (let ring = 0; ring < vwidth; ring++) {
+                items.unshift({ ring, row, section: i });
+            }
+            grid.unshift(items);
+        }
+    });
+
+    // const locations: Coord[][] = [];
+
+    grid.push(...grid.slice(0, 2));
+
+    const cr = 0;
+
+    const lineMe = (c1: Coord, c2: Coord) => {
+        const p1 = grid[c1.x]?.[c1.y];
+        const p2 = grid[c2.x]?.[c2.y];
+        if (!p1 || !p2) {
+            return;
+        }
+        if (p1.section !== p2.section) {
+            const needed =
+                singles[`${p1.section}:${p1.ring},${p1.row}`] &&
+                singles[`${p2.section}:${p2.ring},${p2.row}`];
+            cartesian.back.push(
+                <line
+                    x1={(c1.x + cr) * scale}
+                    y1={c1.y * scale}
+                    x2={(c2.x - cr) * scale}
+                    y2={c2.y * scale}
+                    strokeWidth={5}
+                    stroke={needed ? '#f55' : '#009'}
+                />,
+            );
+            return;
+        }
+        const pk = pairKey(
+            { x: p1.ring, y: p1.row },
+            { x: p2.ring, y: p2.row },
+        );
+        const present = sections[p1.section].pairs[pk];
+        const xr = c1.x === c2.x ? 0 : cr;
+        const yr = c1.y === c2.y ? 0 : cr;
+
+        cartesian.back.push(
+            <line
+                x1={(c1.x + xr) * scale}
+                y1={(c1.y + yr) * scale}
+                x2={(c2.x - xr) * scale}
+                y2={(c2.y - yr) * scale}
+                strokeWidth={5}
+                style={{ cursor: 'pointer' }}
+                stroke={present ? 'red' : '#222'}
+                onClick={() => {
+                    dispatch({ type: 'toggle', section: p1.section, pair: pk });
+                }}
+            />,
+        );
+    };
+
+    grid.forEach((items, gx) => {
+        items.forEach((point, gy) => {
+            const self = { x: gx, y: gy };
+            const up = { x: gx, y: gy - 1 };
+            const down = { x: gx, y: gy + 1 };
+            const left = { x: gx - 1, y: gy };
+            const right = { x: gx + 1, y: gy };
+            // right & down, render;
+            lineMe(self, right);
+            lineMe(self, down);
+        });
+    });
+
+    grid.forEach((items, gx) => {
+        items.forEach((point, gy) => {
+            const needed =
+                singles[`${point.section}:${point.ring},${point.row}`];
+            cartesian.front.push(
+                <circle
+                    cx={gx * scale}
+                    cy={gy * scale}
+                    r={0.07 * scale}
+                    fill={needed ? 'red' : '#222'}
+                    // opacity={0.8}
+                />,
+                <circle
+                    cx={gx * scale}
+                    cy={gy * scale}
+                    r={0.2 * scale}
+                    fill={'transparent'}
+                    style={{ cursor: 'pointer' }}
+                    className="hover"
+                />,
+            );
+        });
+    });
+
+    return (
+        <svg width={W + m * 2} height={H + m * 2}>
+            <g transform={`translate(${m},${m})`}>
+                {ungroup(cartesian)}
+                <g transform={`scale(${scale})`}></g>
+            </g>
+        </svg>
+    );
+}
