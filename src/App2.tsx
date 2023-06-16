@@ -1,8 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { reduceLocalStorage } from './App';
-import { calcLocation, sectionMap, sectionMap2 } from './sections';
-import { calcPath, calcPathParts, calcPathPartsInner } from './calcPath';
-import { Addliness } from './Addliness';
+import { renderCircular } from './renderCircular';
+import { renderCartesian } from './renderCartesian';
 export type Coord = { x: number; y: number };
 
 export type Section = {
@@ -14,12 +13,7 @@ export type Section = {
 
 export type State = {
     version: 3;
-    // size: { _width: number; height: number };
-    // pairs: { [key: string]: boolean };
-    // sections: number[];
-
     sections: Section[];
-
     selection: number[];
     inner?: number;
     circle?: number;
@@ -27,7 +21,6 @@ export type State = {
 
 export const initialState: State = {
     version: 3,
-    // size: { _width: 10, height: 10 },
     selection: [],
     sections: [
         { rows: 3, pairs: {} },
@@ -125,52 +118,24 @@ const reduce = (state: State, action: Action): State => {
             };
             return { ...state, sections };
         }
-        // case 'add': {
-        //     const pairs = parsePairs(state.pairs);
-        //     return {
-        //         ...state,
-        //         size: { ...state.size, height: state.size.height + 1 },
-        //         sections: state.sections.map((s) =>
-        //             s > action.row ? s + 1 : s,
-        //         ),
-        //         pairs: pairsToObject(
-        //             pairs.flatMap(([p1, p2]) => {
-        //                 const one: [Coord, Coord][] = [
-        //                     [
-        //                         {
-        //                             x: p1.x,
-        //                             y: p1.y >= action.row ? p1.y + 1 : p1.y,
-        //                         },
-        //                         {
-        //                             x: p2.x,
-        //                             y: p1.y >= action.row ? p2.y + 1 : p2.y,
-        //                         },
-        //                     ],
-        //                 ];
-        //                 if (p1.y < action.row && p2.y >= action.row) {
-        //                     one.push([
-        //                         { x: p1.x, y: p1.y + 1 },
-        //                         { x: p2.x, y: p2.y + 1 },
-        //                     ]);
-        //                 }
-        //                 return one;
-        //             }),
-        //         ),
-        //     };
-        // }
     }
     console.info('unandled', action);
     return state;
 };
 
-type Grouped = {
+export type Grouped = {
     slop: JSX.Element[];
     back: JSX.Element[];
     mid: JSX.Element[];
     front: JSX.Element[];
 };
 
-const ungroup = (g: Grouped) => [...g.slop, ...g.back, ...g.mid, ...g.front];
+export const ungroup = (g: Grouped) => [
+    ...g.slop,
+    ...g.back,
+    ...g.mid,
+    ...g.front,
+];
 
 export type SlideT =
     | {
@@ -194,35 +159,9 @@ export const App2 = () => {
         // true,
     );
 
-    let mx = 0;
-    let width = 5;
-    let height = 0;
-    state.sections.forEach(({ pairs, rows }) => {
-        height += rows;
-
-        parsePairs(pairs).forEach(([p1, p2]) => {
-            if (p1.x === p2.x) {
-                mx = Math.max(mx, p1.x);
-            }
-            width = Math.max(width, p1.x + 1, p2.x + 1);
-        });
-    });
-    const vwidth = Math.ceil((width + 1) / 3) * 3;
-
-    // console.log(state.sections, width);
+    var bounds = calcBounds(state);
 
     const W = 800;
-    const aspect = vwidth / height;
-    const H = W / aspect;
-    const m = 100;
-
-    const scale = W / vwidth;
-
-    const VW = 300;
-    const vm = 5;
-
-    // const sm = sectionMap2(state.sections, dr, state.inner ?? 1, width);
-
     const [slide, setSlide] = useState(null as SlideT | null);
 
     const sections = slide ? mergeTmp(slide, state.sections) : state.sections;
@@ -240,129 +179,30 @@ export const App2 = () => {
         parsePairs(pairs).forEach((pair) => pair.map(add));
     });
 
-    const circular: Grouped = renderCircular(
-        state,
-        width,
-        VW,
-        dispatch,
-        sections,
-        vwidth,
-        singles,
-    );
-
-    const {
-        rects,
-        cartesian,
-    }: {
-        rects: { section: number; top: number; bottom: number }[];
-        cartesian: Grouped;
-    } = renderCartesian(
+    const cartesian = renderCartesian(
         state,
         setSlide,
         sections,
-        vwidth,
+        bounds,
+        // vwidth,
         slide,
-        width,
+        // width,
         singles,
+        W,
+        dispatch,
     );
 
     return (
         <div>
             <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                <svg
-                    width={W + m * 2}
-                    height={H + m * 2}
-                    onMouseDown={(evt) => {
-                        if (evt.shiftKey) {
-                            setSlide({ type: 'remove', pairs: [] });
-                        } else {
-                            const pos = svgPos(evt);
-                            if (pos.x >= m) {
-                                const found = closest(
-                                    relPos(pos, m, scale),
-                                    rects,
-                                );
-                                setSlide(
-                                    found
-                                        ? { type: 'add', items: [found] }
-                                        : null,
-                                );
-                            }
-                        }
-                    }}
-                    onMouseMove={(evt) => {
-                        const pos = svgPos(evt);
-                        if (pos.x >= m) {
-                            setSlide((slide) => {
-                                if (!slide || slide.type !== 'add')
-                                    return slide;
-                                const found = closest(
-                                    relPos(pos, m, scale),
-                                    rects,
-                                );
-                                if (!found) return slide;
-                                const at = slide.items.findIndex(
-                                    (s) =>
-                                        s.section === found.section &&
-                                        s.x === found.x &&
-                                        s.y === found.y,
-                                );
-                                if (at === slide.items.length - 1) {
-                                    return slide;
-                                }
-                                if (at !== -1) {
-                                    return {
-                                        type: 'add',
-                                        items: slide.items.slice(0, at + 1),
-                                    };
-                                }
-                                const last =
-                                    slide.items[slide.items.length - 1];
-                                if (neighboring(last, found, state.sections)) {
-                                    return {
-                                        type: 'add',
-                                        items: [...slide.items, found],
-                                    };
-                                }
-                                return slide;
-                            });
-                        }
-                    }}
-                    onMouseUp={(evt) => {
-                        if (slide?.type === 'add') {
-                            dispatch({
-                                type: 'slide',
-                                slide: slide.items,
-                            });
-                        } else if (slide?.type === 'remove') {
-                            dispatch({
-                                type: 'remove',
-                                pairs: slide.pairs,
-                            });
-                        }
-                        setSlide(null);
-                    }}
-                >
-                    <g transform={`translate(${m},${m})`}>
-                        <g transform={`scale(${scale})`}>
-                            {ungroup(cartesian)}
-                        </g>
-                        {/* <Addliness
-                            dispatch={dispatch}
-                            state={state}
-                            scale={scale}
-                        /> */}
-                    </g>
-                </svg>
-                <svg
-                    width={VW + vm * 2}
-                    height={VW + vm * 2}
-                    style={{ marginTop: 50 - vm, backgroundColor: '#0a0a0a' }}
-                >
-                    <g transform={`translate(${vm},${vm})`}>
-                        {ungroup(circular)}
-                    </g>
-                </svg>
+                {cartesian}
+                {renderCircular(
+                    state,
+                    bounds.width,
+                    dispatch,
+                    sections,
+                    singles,
+                )}
             </div>
             <div>
                 <button onClick={() => dispatch({ type: 'clear' })}>
@@ -380,10 +220,9 @@ export type Slide = {
     y: number;
 };
 
-const concol = '#666';
-const missing = '#111';
+export const missing = '#111';
 
-const neighboring = (one: Slide, two: Slide, sections: Section[]) => {
+export const neighboring = (one: Slide, two: Slide, sections: Section[]) => {
     if (one.x !== two.x) {
         return (
             one.section === two.section &&
@@ -417,7 +256,7 @@ export type Rect = {
     bottom: number;
 };
 
-const closest = (
+export const closest = (
     pos: Coord,
     rects: Rect[],
     // m: number,
@@ -440,7 +279,7 @@ const closest = (
     return null;
 };
 
-const svgPos = (evt: React.MouseEvent<SVGSVGElement>) => {
+export const svgPos = (evt: React.MouseEvent<SVGSVGElement>) => {
     const box = evt.currentTarget.getBoundingClientRect();
     return {
         x: evt.clientX - box.left,
@@ -450,258 +289,25 @@ const svgPos = (evt: React.MouseEvent<SVGSVGElement>) => {
 
 export const exact = (n: number) => Math.round(n) === n;
 
-function renderCartesian(
-    state: State,
-    setSlide: React.Dispatch<React.SetStateAction<SlideT | null>>,
-    sections: Section[],
-    vwidth: number,
-    slide: SlideT | null,
-    width: number,
-    singles: { [key: string]: boolean },
-) {
-    const shrink = 0.1;
+function calcBounds(state: State) {
+    let mx = 0;
+    let width = 5;
+    let height = 0;
+    state.sections.forEach(({ pairs, rows }) => {
+        height += rows;
 
-    const cartesian: Grouped = { slop: [], back: [], mid: [], front: [] };
-    const addLine = (
-        section: number,
-        yoff: number,
-        p1: Coord,
-        p2: Coord,
-        pairs: State['sections'][0]['pairs'],
-    ) => {
-        const sectionTheta =
-            (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
-
-        const pk = pairKey(p1, p2);
-        const pos = pairs[pk] ? 'front' : 'back';
-        const xs = p1.x === p2.x ? 0 : shrink;
-        const ys = p1.y === p2.y ? 0 : shrink;
-        cartesian[pos].push(
-            <line
-                key={`${section} ${pk}`}
-                data-pk={pk}
-                x1={p1.x + xs}
-                x2={p2.x - xs}
-                y1={p1.y + yoff + ys}
-                y2={p2.y + yoff - ys}
-                strokeLinecap="round"
-                stroke={pairs[pk] ? 'blue' : missing}
-                strokeWidth={0.1}
-                onMouseDown={(evt) => {
-                    if (evt.shiftKey) {
-                        setSlide({
-                            type: 'remove',
-                            pairs: [{ section, pair: pk }],
-                        });
-                    }
-                }}
-                onMouseMove={() => {
-                    setSlide((slide) =>
-                        slide?.type === 'remove' &&
-                        !slide.pairs.find(
-                            (p) => p.section === section && p.pair === pk,
-                        )
-                            ? {
-                                  ...slide,
-                                  pairs: [
-                                      ...slide.pairs,
-                                      { section, pair: pk },
-                                  ],
-                              }
-                            : slide,
-                    );
-                }}
-                style={{ cursor: 'pointer' }}
-            />,
-        );
-    };
-
-    const rects: { section: number; top: number; bottom: number }[] = [];
-    let yoff = 0;
-
-    sections.forEach(({ pairs, rows }, i) => {
-        for (let x = 0; x < vwidth; x++) {
-            for (let y = 0; y < rows; y++) {
-                if (y < rows - 1) {
-                    addLine(i, yoff, { x, y }, { x, y: y + 1 }, pairs);
-                }
-                if (x < vwidth - 1) {
-                    addLine(i, yoff, { x, y }, { x: x + 1, y }, pairs);
-                }
+        parsePairs(pairs).forEach(([p1, p2]) => {
+            if (p1.x === p2.x) {
+                mx = Math.max(mx, p1.x);
             }
-        }
-        if (
-            slide?.type === 'add' &&
-            slide.items[slide.items.length - 1].section === i
-        ) {
-            cartesian.front.push(
-                <circle
-                    cx={slide.items[slide.items.length - 1].x}
-                    cy={slide.items[slide.items.length - 1].y + yoff}
-                    r={0.2}
-                    fill="red"
-                    key="slide"
-                />,
-            );
-        }
-        const between = 0.4;
-
-        const oldYoff = yoff;
-        yoff += rows - 1 + between;
-
-        rects.push({
-            section: i,
-            top: oldYoff,
-            bottom: yoff - between,
+            width = Math.max(width, p1.x + 1, p2.x + 1);
         });
-
-        for (let x = 0; x < width; x++) {
-            const k1 = `${i}:${x},${rows - 1}`;
-            const k2 = `${(i + 1) % sections.length}:${x},${0}`;
-            const needed = singles[k1] || singles[k2];
-
-            cartesian.mid.push(
-                <line
-                    key={`${i} ${x} - connector`}
-                    x1={x}
-                    x2={x}
-                    y1={rows - 1 + oldYoff}
-                    y2={yoff}
-                    strokeLinecap="round"
-                    stroke={needed ? '#007' : '#500'}
-                    strokeWidth={needed ? 0.1 : 0.05}
-                />,
-            );
-        }
     });
-    return { rects, cartesian };
+    const vwidth = Math.ceil((width + 1) / 3) * 3;
+    return { vwidth, width, mx, height };
 }
 
-function renderCircular(
-    state: State,
-    width: number,
-    VW: number,
-    dispatch: React.Dispatch<Action>,
-    sections: Section[],
-    vwidth: number,
-    singles: { [key: string]: boolean },
-) {
-    const R = VW / 2;
-    const dr = R / (width + (state.inner ?? 1) + 1);
-    const r0 = state.inner ?? 1;
-
-    const circular: Grouped = { slop: [], back: [], mid: [], front: [] };
-    const addCircular = (
-        section: number,
-        p1: Coord,
-        p2: Coord,
-        pairs: State['sections'][0]['pairs'],
-    ) => {
-        const sectionTheta =
-            (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
-
-        const pk = pairKey(p1, p2);
-        const pos = pairs[pk] ? 'front' : 'back';
-
-        // console.log(sm);
-        circular[pos].push(
-            <path
-                key={`${section} ${pk}`}
-                data-pk={pk}
-                d={calcPathPartsInner(
-                    [
-                        calcLocation({
-                            pos: { x: width - p1.x, y: p1.y },
-                            sectionTheta,
-                            dr,
-                            r0,
-                            rows: state.sections[section].rows,
-                        }),
-                        calcLocation({
-                            pos: { x: width - p2.x, y: p2.y },
-                            sectionTheta,
-                            dr,
-                            r0,
-                            rows: state.sections[section].rows,
-                        }),
-                    ],
-                    VW / 2,
-                    VW / 2,
-                ).paths.join(' ')}
-                strokeLinecap="round"
-                fill="none"
-                stroke={pairs[pk] ? 'blue' : missing}
-                strokeWidth={3}
-                onClick={() =>
-                    dispatch({
-                        type: 'toggle',
-                        pair: pk,
-                        section,
-                    })
-                }
-                style={{ cursor: 'pointer' }}
-            />,
-        );
-    };
-
-    sections.forEach(({ pairs, rows }, i) => {
-        for (let x = 0; x < width; x++) {
-            for (let y = 0; y < rows; y++) {
-                if (y < rows - 1) {
-                    addCircular(i, { x, y }, { x, y: y + 1 }, pairs);
-                }
-                if (x < width - 1) {
-                    addCircular(i, { x, y }, { x: x + 1, y }, pairs);
-                }
-            }
-        }
-
-        const sectionTheta = (i / sections.length) * Math.PI * 2 + Math.PI / 2;
-        const nsectionTheta =
-            ((i + 1) / sections.length) * Math.PI * 2 + Math.PI / 2;
-        // console.log(singles);
-        for (let x = 0; x < width; x++) {
-            const k1 = `${i}:${x},${rows - 1}`;
-            const k2 = `${(i + 1) % sections.length}:${x},${0}`;
-            const needed = singles[k1] || singles[k2];
-            // console.log(k1, k2, singles[k1], singles[k2]);
-            // if (!needed) continue;
-            circular.mid.push(
-                <path
-                    key={`${i} ${x} - connector`}
-                    d={calcPathPartsInner(
-                        [
-                            calcLocation({
-                                pos: { x: width - x, y: rows - 1 },
-                                sectionTheta,
-                                dr,
-                                r0,
-                                rows: sections[i].rows,
-                            }),
-                            calcLocation({
-                                pos: { x: width - x, y: 0 },
-                                sectionTheta: nsectionTheta,
-                                dr,
-                                r0,
-                                rows: sections[(i + 1) % sections.length].rows,
-                            }),
-                        ],
-                        VW / 2,
-                        VW / 2,
-                        true,
-                    ).paths.join(' ')}
-                    strokeLinecap="round"
-                    fill="none"
-                    stroke={needed ? '#007' : '#300'}
-                    strokeWidth={3}
-                />,
-            );
-        }
-    });
-    return circular;
-}
-
-function relPos(
+export function relPos(
     pos: { x: number; y: number },
     m: number,
     scale: number,
