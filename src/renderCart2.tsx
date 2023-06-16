@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     State,
     Slide,
@@ -14,7 +14,7 @@ import {
     neighboring,
     ungroup,
 } from './App2';
-import { Addliness } from './Addliness';
+import { AddRing, Addliness } from './Addliness';
 
 const sectionPairKey = (section: number, ring: number, row: number) =>
     `${section}:${ring},${row}`;
@@ -35,6 +35,8 @@ export function renderCart2(
     dispatch: React.Dispatch<Action>,
 ) {
     const cartesian: Grouped = { slop: [], back: [], mid: [], front: [] };
+
+    const [hoverPoint, setHoverPoint] = useState(null as null | GridPoint);
 
     const m = 100;
 
@@ -128,8 +130,21 @@ export function renderCart2(
                     cy={gy * scale}
                     r={0.2 * scale}
                     fill={'transparent'}
-                    style={{ cursor: 'pointer' }}
-                    className="hover"
+                    style={{
+                        ...(hoverPoint &&
+                        hoverPoint.ring === point.ring &&
+                        hoverPoint.row === point.row &&
+                        hoverPoint.section === point.section
+                            ? {
+                                  fill: 'red',
+                              }
+                            : {}),
+                        cursor: 'pointer',
+                        transition: 'fill 0.3s ease',
+                    }}
+                    // className="hover"
+                    onMouseEnter={() => setHoverPoint(point)}
+                    onMouseLeave={() => setHoverPoint(null)}
                     onMouseDown={(evt) => {
                         setSlide({ type: 'add2', items: [{ x: gx, y: gy }] });
                     }}
@@ -219,12 +234,20 @@ export function renderCart2(
                 {ungroup(cartesian)}
                 <g transform={`scale(${scale})`}></g>
                 {slide ? null : (
-                    <Addliness
-                        dispatch={dispatch}
-                        state={state}
-                        grid={grid}
-                        scale={scale}
-                    />
+                    <>
+                        <AddRing
+                            dispatch={dispatch}
+                            state={state}
+                            grid={grid}
+                            scale={scale}
+                        />
+                        <Addliness
+                            dispatch={dispatch}
+                            state={state}
+                            grid={grid}
+                            scale={scale}
+                        />
+                    </>
                 )}
             </g>
         </svg>

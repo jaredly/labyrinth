@@ -16,6 +16,7 @@ export type State = {
     version: 3;
     sections: Section[];
     selection: number[];
+    rings: number;
     inner?: number;
     circle?: number;
 };
@@ -23,6 +24,7 @@ export type State = {
 export const initialState: State = {
     version: 3,
     selection: [],
+    rings: 7,
     sections: [
         { rows: 3, pairs: {} },
         { rows: 2, pairs: {} },
@@ -72,6 +74,8 @@ export type Action =
     | { type: 'slide'; slide: SecionCoord[] }
     | { type: 'clear' }
     | { type: 'add'; section: number; row: number }
+    | { type: 'addring'; ring: number }
+    | { type: 'rmring'; ring: number }
     | { type: 'rmrow'; section: number; row: number }
     | { type: 'sections'; sections: State['sections'] };
 
@@ -119,6 +123,42 @@ const reduce = (state: State, action: Action): State => {
                 },
             };
             return { ...state, sections };
+        }
+        case 'addring': {
+            return {
+                ...state,
+                rings: state.rings + 1,
+                sections: state.sections.map((s) => {
+                    const pairs = parsePairs(s.pairs).map(
+                        ([p1, p2]): [Coord, Coord] =>
+                            p1.x >= action.ring
+                                ? [
+                                      { x: p1.x + 1, y: p1.y },
+                                      { x: p2.x + 1, y: p2.y },
+                                  ]
+                                : [p1, p2],
+                    );
+                    return { pairs: pairsToObject(pairs), rows: s.rows };
+                }),
+            };
+        }
+        case 'rmring': {
+            return {
+                ...state,
+                rings: state.rings - 1,
+                sections: state.sections.map((s) => {
+                    const pairs = parsePairs(s.pairs).map(
+                        ([p1, p2]): [Coord, Coord] =>
+                            p1.x >= action.ring
+                                ? [
+                                      { x: p1.x - 1, y: p1.y },
+                                      { x: p2.x - 1, y: p2.y },
+                                  ]
+                                : [p1, p2],
+                    );
+                    return { pairs: pairsToObject(pairs), rows: s.rows };
+                }),
+            };
         }
         case 'rmrow': {
             return {
@@ -206,6 +246,10 @@ export const App2 = () => {
     );
 
     var bounds = calcBounds(state);
+
+    if (!state.rings) {
+        state.rings = 7;
+    }
 
     const [slide, setSlide] = useState(null as Slide | null);
 
@@ -341,7 +385,7 @@ export const exact = (n: number) => Math.round(n) === n;
 
 function calcBounds(state: State) {
     let mx = 0;
-    let width = 5;
+    let width = state.rings ?? 7;
     let rowTotal = 0;
     state.sections.forEach(({ pairs, rows }) => {
         rowTotal += rows;
@@ -350,10 +394,10 @@ function calcBounds(state: State) {
             if (p1.x === p2.x) {
                 mx = Math.max(mx, p1.x);
             }
-            width = Math.max(width, p1.x + 1, p2.x + 1);
+            // width = Math.max(width, p1.x + 1, p2.x + 1);
         });
     });
-    const vwidth = Math.ceil((width + 2) / 3) * 3;
+    const vwidth = width; // Math.ceil((width + 2) / 3) * 3;
     return { vwidth, width, mx, rowTotal };
 }
 
