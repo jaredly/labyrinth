@@ -1,7 +1,7 @@
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { Size } from './Size';
 import { calcPath, cart, polarPath, rainbow, showColor } from './calcPath';
-import { SectionMap, pointDistance, sectionMap } from './sections';
+import { SectionMap, pointDistance } from './sections';
 import { useDropStateTarget } from './useDropTarget';
 import { SectionsInput } from './SectionsInput';
 import { CartesianEdits } from './CartesianEdits';
@@ -233,7 +233,7 @@ export const App = () => {
     const R = Math.min(W - mx, H - my) / 2;
     const dr = R / (state.size.width + state.inner);
 
-    const sm = sectionMap(state.sections, state.size, dr, state.inner);
+    const sm: SectionMap = {}; // sectionMap(state.sections, state.size, dr, state.inner);
     const gr2 = [];
     for (let y = 0; y < state.size.height; y++) {
         for (let x = 0; x < state.size.width; x++) {
@@ -409,7 +409,7 @@ export const App = () => {
                     {/* {gr2} */}
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
-                            d={calcPath(allPairs, state.size, sm, cx, cy)}
+                            d={calcPath(allPairs, state.size, sm, cx, cy, 0)}
                             strokeWidth={dr * 1.5}
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -436,10 +436,18 @@ export const App = () => {
                                 my,
                                 dists,
                                 dr - 4,
+                                0,
                             )
                         ) : (
                             <path
-                                d={calcPath(allPairs, state.size, sm, mx, my)}
+                                d={calcPath(
+                                    allPairs,
+                                    state.size,
+                                    sm,
+                                    mx,
+                                    my,
+                                    0,
+                                )}
                                 strokeWidth={dr - 4}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"

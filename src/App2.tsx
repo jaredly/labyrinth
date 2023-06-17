@@ -4,6 +4,7 @@ import { organizeLine, renderCircular } from './renderCircular';
 import { GridPoint, buildGrid, renderCart2 } from './renderCart2';
 import { ExportButton } from './ExportButton';
 import { reduce } from './reduce';
+import { useDropStateTarget } from './useDropTarget';
 export type Coord = { x: number; y: number };
 
 export type Section = {
@@ -74,6 +75,7 @@ export type Action =
     | { type: 'remove'; pairs: { section: number; pair: string }[] }
     | { type: 'slide'; slide: SecionCoord[] }
     | { type: 'clear' }
+    | { type: 'reset'; state: State }
     | { type: 'add'; section: number; row: number }
     | { type: 'addring'; ring: number }
     | { type: 'rmring'; ring: number }
@@ -84,7 +86,7 @@ export type Grouped = {
     slop: JSX.Element[];
     back: JSX.Element[];
     mid: JSX.Element[];
-    front: JSX.Element[];
+    front: (JSX.Element | null)[];
 };
 
 export const ungroup = (g: Grouped) => [
@@ -168,9 +170,14 @@ export const App2 = () => {
         hoverPoint,
         setHoverPoint,
     );
+    const [dragging, callbacks] = useDropStateTarget((state) => {
+        if (state) {
+            dispatch({ type: 'reset', state });
+        }
+    }, migrateState);
 
     return (
-        <div>
+        <div {...callbacks}>
             <div style={{ display: 'flex', alignItems: 'flex-start' }}>
                 {cartesian}
                 {renderCircular(
@@ -181,6 +188,7 @@ export const App2 = () => {
                     sections,
                     singles,
                     hoverPoint,
+                    line,
                 )}
             </div>
             <div>
@@ -188,6 +196,9 @@ export const App2 = () => {
                     Clear
                 </button>
                 <ExportButton csvg={cref} svg={ref} state={state} />
+                {hoverPoint
+                    ? `${hoverPoint.section}:${hoverPoint.ring},${hoverPoint.row}`
+                    : ''}
             </div>
         </div>
     );

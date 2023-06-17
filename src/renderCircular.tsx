@@ -1,6 +1,6 @@
 import React from 'react';
-import { calcLocation } from './sections';
-import { calcPathPartsInner } from './calcPath';
+import { calcLocation, pointDistance2 } from './sections';
+import { calcPathPartsInner, showColor2 } from './calcPath';
 import {
     State,
     Action,
@@ -34,11 +34,11 @@ export const organizeLine = (
         }
     };
 
-    sections.forEach(({ pairs }, i) => {
+    sections.forEach(({ pairs, rows }, i) => {
         for (let ring = 0; ring < rings; ring++) {
-            const k = `${i}:${ring},0`;
+            const k = `${i}:${ring},${rows - 1}`;
             const sn = (i + 1) % sections.length;
-            const k2 = `${sn}:${ring},${sections[sn].rows - 1}`;
+            const k2 = `${sn}:${ring},${0}`;
             if (singles[k] || singles[k2]) {
                 withConnectors[k] = (withConnectors[k] || 0) + 1;
                 withConnectors[k2] = (withConnectors[k2] || 0) + 1;
@@ -62,13 +62,14 @@ export const organizeLine = (
             };
         })
         .sort((a, b) => a.pos.ring - b.pos.ring);
-    if (!ends || ends[0].pos.ring !== 0) {
+    if (!ends.length || ends[0].pos.ring !== 0) {
         return null;
     }
 
     const line: string[] = [
         `${ends[0].section}:${ends[0].pos.ring},${ends[0].pos.row}`,
     ];
+    // console.log('LINEARIZE');
     while (true) {
         const last = line[line.length - 1];
         if (connected[last].length !== 1) {
@@ -76,6 +77,7 @@ export const organizeLine = (
         }
         const got = connected[last][0];
         delete connected[last];
+        // console.log(last, '->', got);
         connected[got] = connected[got].filter((k) => k !== last);
         line.push(got);
     }
@@ -90,6 +92,7 @@ export function renderCircular(
     sections: Section[],
     singles: { [key: string]: number },
     hoverPoint: GridPoint | null,
+    line: string[] | null,
 ) {
     const VW = 300;
     const vm = 5;
@@ -98,12 +101,21 @@ export function renderCircular(
     const dr = R / (width + (state.inner ?? 1) + 1);
     const r0 = state.inner ?? 1;
 
+    const sectionCols: number[] = [];
+    let col = 0;
+    sections.forEach(({ pairs, rows }, i) => {
+        sectionCols.push(col);
+        col += rows;
+    });
+    const totalCols = col;
+
     const circular: Grouped = { slop: [], back: [], mid: [], front: [] };
     const addCircular = (
         section: number,
         p1: Coord,
         p2: Coord,
         pairs: State['sections'][0]['pairs'],
+        col: number,
     ) => {
         const sectionTheta =
             (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
@@ -123,6 +135,7 @@ export function renderCircular(
                             dr,
                             r0,
                             rows: state.sections[section].rows,
+                            col: col + p1.y,
                         }),
                         calcLocation({
                             pos: { x: width - p2.x, y: p2.y },
@@ -130,15 +143,17 @@ export function renderCircular(
                             dr,
                             r0,
                             rows: state.sections[section].rows,
+                            col: col + p2.y,
                         }),
                     ],
                     VW / 2,
                     VW / 2,
+                    totalCols,
                 ).paths.join(' ')}
                 strokeLinecap="round"
                 fill="none"
                 stroke={pairs[pk] ? 'blue' : missing}
-                strokeWidth={3}
+                strokeWidth={1}
                 onClick={() =>
                     dispatch({
                         type: 'toggle',
@@ -152,13 +167,14 @@ export function renderCircular(
     };
 
     sections.forEach(({ pairs, rows }, i) => {
+        col = sectionCols[i];
         for (let x = 0; x < width; x++) {
             for (let y = 0; y < rows; y++) {
                 if (y < rows - 1) {
-                    addCircular(i, { x, y }, { x, y: y + 1 }, pairs);
+                    addCircular(i, { x, y }, { x, y: y + 1 }, pairs, col);
                 }
                 if (x < width - 1) {
-                    addCircular(i, { x, y }, { x: x + 1, y }, pairs);
+                    addCircular(i, { x, y }, { x: x + 1, y }, pairs, col);
                 }
             }
         }
@@ -175,6 +191,7 @@ export function renderCircular(
                 dr,
                 r0,
                 rows: sections[i].rows,
+                col: col + hoverPoint.row,
             });
             const x = Math.cos(pos.t) * pos.r + VW / 2;
             const y = Math.sin(pos.t) * pos.r + VW / 2;
@@ -199,6 +216,7 @@ export function renderCircular(
                                 dr,
                                 r0,
                                 rows: sections[i].rows,
+                                col: 0,
                             }),
                             calcLocation({
                                 pos: { x: width - x, y: 0 },
@@ -206,20 +224,67 @@ export function renderCircular(
                                 dr,
                                 r0,
                                 rows: sections[(i + 1) % sections.length].rows,
+                                col: 1,
                             }),
                         ],
                         VW / 2,
                         VW / 2,
-                        true,
+                        totalCols,
                     ).paths.join(' ')}
                     strokeLinecap="round"
                     fill="none"
                     stroke={needed ? 'blue' : '#300'}
-                    strokeWidth={3}
+                    strokeWidth={1}
                 />,
             );
         }
     });
+
+    if (line) {
+        const polars = line.map((k) => {
+            const [section, pos] = k.split(':');
+            const [ring, row] = pos.split(',');
+            const sectionTheta =
+                (+section / sections.length) * Math.PI * 2 + Math.PI / 2;
+            const y = +row; //sections[+section].rows - +row;
+            return calcLocation({
+                pos: { x: width - +ring, y: y },
+                sectionTheta,
+                dr,
+                r0,
+                rows: sections[+section].rows,
+                col: sectionCols[+section] + y,
+            });
+        });
+
+        const color = true;
+        if (color) {
+            // const dists = [];
+
+            const dists = pointDistance2(polars);
+
+            circular.front.push(
+                ...showColor2(polars, VW / 2, VW / 2, dists, 5, totalCols),
+            );
+        } else {
+            circular.front.push(
+                <path
+                    key={`themaindeal`}
+                    d={calcPathPartsInner(
+                        polars,
+                        VW / 2,
+                        VW / 2,
+                        totalCols,
+                    ).paths.join(' ')}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                    stroke={'red'}
+                    strokeWidth={5}
+                />,
+            );
+        }
+    }
 
     return (
         <svg

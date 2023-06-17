@@ -51,6 +51,7 @@ export type SectionMap = {
         x: number;
         y: number;
         offset: number;
+        col: number;
         // section: number;
     };
 };
@@ -61,12 +62,14 @@ export const calcLocation = ({
     r0,
     sectionTheta,
     rows,
+    col,
 }: {
     pos: Coord;
     r0: number;
     sectionTheta: number;
     rows: number;
     dr: number;
+    col: number;
 }) => {
     const r = (r0 + x) * dr;
     let t = sectionTheta;
@@ -78,6 +81,7 @@ export const calcLocation = ({
         x,
         y,
         offset,
+        col,
     };
 };
 
@@ -88,6 +92,7 @@ export const sectionMap2 = (
     width: number,
 ) => {
     const mapping: SectionMap = {};
+    let col = 0;
     sections.forEach(({ rows, pairs }, i) => {
         const sectionTheta = (i / sections.length) * Math.PI * 2 + Math.PI / 2;
         Object.keys(pairs)
@@ -100,6 +105,7 @@ export const sectionMap2 = (
                     dr,
                     r0,
                     rows,
+                    col: col + p1.y,
                 });
                 mapping[`${i}:${p2.x},${p2.y}`] = calcLocation({
                     pos: { x: width - 1 - p2.x, y: p2.y },
@@ -107,41 +113,70 @@ export const sectionMap2 = (
                     dr,
                     r0,
                     rows,
+                    col: col + p2.y,
                 });
             });
+        col += rows;
     });
     return mapping;
 };
 
-export const sectionMap = (
-    sections: number[],
-    size: State['size'],
-    dr: number,
-    r0: number,
-    rev = true,
-) => {
-    const mapping: SectionMap = {};
-    const map = ySectionMap(sections, size.height);
-    const numSections = (sections.length - 1) / 2;
-    for (let y = 0; y < size.height; y++) {
-        const { offset, section } = map[y];
-        for (let x = 0; x < size.width; x++) {
-            const r = (r0 + x) * dr;
-            let t = (section / numSections) * Math.PI * 2;
+// export const sectionMap = (
+//     sections: number[],
+//     size: State['size'],
+//     dr: number,
+//     r0: number,
+//     rev = true,
+// ) => {
+//     const mapping: SectionMap = {};
+//     const map = ySectionMap(sections, size.height);
+//     const numSections = (sections.length - 1) / 2;
+//     for (let y = 0; y < size.height; y++) {
+//         const { offset, section } = map[y];
+//         for (let x = 0; x < size.width; x++) {
+//             const r = (r0 + x) * dr;
+//             let t = (section / numSections) * Math.PI * 2;
 
-            t += (offset * dr) / r;
+//             t += (offset * dr) / r;
 
-            mapping[`${x},${rev ? size.height - 1 - y : y}`] = {
-                t: normalizeAngle(t) + Math.PI / 2,
-                r,
-                x,
-                y,
-                offset,
-                // section,
-            };
+//             mapping[`${x},${rev ? size.height - 1 - y : y}`] = {
+//                 t: normalizeAngle(t) + Math.PI / 2,
+//                 r,
+//                 x,
+//                 y,
+//                 offset,
+//                 col:
+//                 // section,
+//             };
+//         }
+//     }
+//     return mapping;
+// };
+
+export const pointDistance2 = (polar: SectionMap[''][]) => {
+    let dist = 0;
+    return polar.map((p, i) => {
+        if (i === 0) {
+            return 0;
         }
-    }
-    return mapping;
+        const prev = polar[i - 1];
+        // const pp = sm[`${prev.x},${prev.y}`];
+        // const sp = sm[`${p.x},${p.y}`];
+        // if (!sp || !pp) {
+        //     return dist;
+        // }
+
+        if (prev.y === p.y) {
+            dist += Math.abs(prev.r - p.r);
+            return dist;
+        }
+
+        const cw = p.y > prev.y;
+        const delta = angleBetween(p.t, prev.t, cw);
+
+        dist += delta * p.r;
+        return dist;
+    });
 };
 
 export const pointDistance = (

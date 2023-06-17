@@ -228,8 +228,6 @@ export function renderCart2(
             }}
         >
             <g transform={`translate(${m},${m})`}>
-                {ungroup(cartesian)}
-                <g transform={`scale(${scale})`}></g>
                 {slide ? null : (
                     <>
                         <AddRing
@@ -246,6 +244,7 @@ export function renderCart2(
                         />
                     </>
                 )}
+                {ungroup(cartesian)}
             </g>
         </svg>
     );

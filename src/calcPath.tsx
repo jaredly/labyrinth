@@ -12,8 +12,16 @@ export const showColor = (
     my: number,
     dists: number[],
     dr: number,
+    cols: number,
 ) => {
-    const { paths, polar } = calcPathParts(points, size, sectionMap, mx, my);
+    const { paths, polar } = calcPathParts(
+        points,
+        size,
+        sectionMap,
+        mx,
+        my,
+        cols,
+    );
 
     const cx = (W - mx * 2) / 2;
     const cy = (H - my * 2) / 2;
@@ -45,13 +53,14 @@ export const calcPath = (
     sectionMap: SectionMap,
     cx: number,
     cy: number,
+    cols: number,
 ): string => {
     // const cx = (W - mx * 2) / 2;
     // const cy = (H - my * 2) / 2;
 
     return pairs
         .map((pair) =>
-            calcPathParts(pair, size, sectionMap, cx, cy).paths.join(' '),
+            calcPathParts(pair, size, sectionMap, cx, cy, cols).paths.join(' '),
         )
         .join(' ');
 };
@@ -62,6 +71,7 @@ export const calcPathParts = (
     sectionMap: SectionMap,
     cx: number,
     cy: number,
+    cols: number,
 ): { paths: string[]; polar: (typeof sectionMap)[''][] } => {
     const keys = points
         .map(({ x, y }) => ({ x: size.width - 1 - x, y }))
@@ -69,15 +79,48 @@ export const calcPathParts = (
         .map((key) => sectionMap[key])
         .filter(Boolean);
 
-    return calcPathPartsInner(keys, cx, cy);
+    return calcPathPartsInner(keys, cx, cy, cols);
+};
+
+export const showColor2 = (
+    polar: SectionMap[''][],
+    cx: number,
+    cy: number,
+    dists: number[],
+    dr: number,
+    cols: number,
+) => {
+    const { paths } = calcPathPartsInner(polar, cx, cy, cols);
+
+    const max = dists[dists.length - 1];
+
+    return paths.map((item, i): JSX.Element | null => {
+        if (i === 0) {
+            return null;
+        }
+        const pos = polar[i - 1];
+        const x = Math.cos(pos.t) * pos.r + cx;
+        const y = Math.sin(pos.t) * pos.r + cy;
+        return (
+            <path
+                d={`M${x} ${y} ${item}`}
+                strokeWidth={dr}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                stroke={rainbow(dists[i] / max)}
+                fill="none"
+            />
+        );
+    });
 };
 
 export const calcPathPartsInner = (
     polar: SectionMap[''][],
     cx: number,
     cy: number,
-    cwo?: boolean,
+    cols: number,
 ): { paths: string[]; polar: SectionMap[''][] } => {
+    // console.log('ya', polar.length);
     const paths = polar.map((pos, i) => {
         const x = Math.cos(pos.t) * pos.r + cx;
         const y = Math.sin(pos.t) * pos.r + cy;
@@ -88,8 +131,8 @@ export const calcPathPartsInner = (
         if (prev.y === pos.y) {
             return `L${x} ${y}`;
         }
-        const cw = cwo != null ? cwo : pos.y > prev.y;
-
+        const cw = pos.col === (prev.col + 1) % cols;
+        // console.log(pos.col, prev.col);
         const delta = angleBetween(pos.t, prev.t, cw);
 
         const largeArcFlag = Math.abs(delta) < Math.PI;

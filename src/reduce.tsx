@@ -14,6 +14,8 @@ export const reduce = (state: State, action: Action): State => {
                 ...state,
                 sections: state.sections.map((s) => ({ ...s, pairs: {} })),
             };
+        case 'reset':
+            return action.state;
         case 'sections':
             return { ...state, sections: action.sections };
         case 'remove': {
