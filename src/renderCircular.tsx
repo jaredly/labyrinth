@@ -203,8 +203,6 @@ export function renderCircular(
             const k1 = `${i}:${x},${rows - 1}`;
             const k2 = `${(i + 1) % sections.length}:${x},${0}`;
             const needed = singles[k1] || singles[k2];
-            // console.log(k1, k2, singles[k1], singles[k2]);
-            // if (!needed) continue;
             circular.mid.push(
                 <path
                     key={`${i} ${x} - connector`}

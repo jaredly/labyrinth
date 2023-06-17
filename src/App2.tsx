@@ -76,7 +76,7 @@ export type Action =
     | { type: 'slide'; slide: SecionCoord[] }
     | { type: 'clear' }
     | { type: 'reset'; state: State }
-    | { type: 'add'; section: number; row: number }
+    | { type: 'addrow'; section: number; row: number }
     | { type: 'addring'; ring: number }
     | { type: 'rmring'; ring: number }
     | { type: 'rmrow'; section: number; row: number }

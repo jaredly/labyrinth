@@ -154,7 +154,6 @@ export const Addliness = ({
                     transform={`translate(${
                         pos.col * scale + scale / 2
                     }, ${15})`}
-                    // style={{ pointerEvents: 'none' }}
                 >
                     <circle
                         cx={0}
@@ -164,8 +163,9 @@ export const Addliness = ({
                         style={{ cursor: 'pointer' }}
                         onClick={() => {
                             const zero = grid[pos.col][0];
+                            // console.log(zero, pos.col);
                             dispatch({
-                                type: 'add',
+                                type: 'addrow',
                                 section: zero.section,
                                 row: zero.row,
                             });

@@ -12,7 +12,12 @@ export const reduce = (state: State, action: Action): State => {
         case 'clear':
             return {
                 ...state,
-                sections: state.sections.map((s) => ({ ...s, pairs: {} })),
+                sections: [
+                    { rows: 3, pairs: {} },
+                    { rows: 2, pairs: {} },
+                    { rows: 2, pairs: {} },
+                    { rows: 2, pairs: {} },
+                ],
             };
         case 'reset':
             return action.state;
@@ -61,7 +66,7 @@ export const reduce = (state: State, action: Action): State => {
                 sections: state.sections.map((s) => {
                     const pairs = parsePairs(s.pairs).map(
                         ([p1, p2]): [Coord, Coord] =>
-                            p1.x >= action.ring
+                            p1.x > action.ring
                                 ? [
                                       { x: p1.x + 1, y: p1.y },
                                       { x: p2.x + 1, y: p2.y },
@@ -110,7 +115,12 @@ export const reduce = (state: State, action: Action): State => {
                 }),
             };
         }
-        case 'add': {
+        case 'addrow': {
+            if (action.row === 0) {
+                const sections = state.sections.slice();
+                sections.splice(action.section, 0, { pairs: {}, rows: 2 });
+                return { ...state, sections };
+            }
             return {
                 ...state,
                 sections: state.sections.map((s, i) => {
