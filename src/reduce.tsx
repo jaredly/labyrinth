@@ -12,6 +12,7 @@ export const reduce = (state: State, action: Action): State => {
         case 'clear':
             return {
                 ...state,
+                rings: 7,
                 sections: [
                     { rows: 3, pairs: {} },
                     { rows: 2, pairs: {} },
@@ -96,6 +97,12 @@ export const reduce = (state: State, action: Action): State => {
             };
         }
         case 'rmrow': {
+            if (action.row === 0) {
+                const sections = state.sections.slice();
+                const old = sections[action.section];
+                sections.splice(action.section, 1);
+                return { ...state, sections };
+            }
             return {
                 ...state,
                 sections: state.sections.map((s, i) => {
