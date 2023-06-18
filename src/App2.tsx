@@ -178,7 +178,13 @@ export const App2 = () => {
 
     return (
         <div {...callbacks}>
-            <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    flexWrap: 'wrap',
+                }}
+            >
                 {cartesian}
                 {renderCircular(
                     ref,

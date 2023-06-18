@@ -34,15 +34,12 @@ export function renderCart2(
 ) {
     const cartesian: Grouped = { slop: [], back: [], mid: [], front: [] };
 
-    const m = 100;
+    const m = 50;
 
     const cr = 0;
 
-    // const between = 1;
-    // const aspect = vwidth / (rowTotal + sections.length + 10);
     const W = 800;
     const H = W / (grid.length / grid[0].length);
-    // const H = W / aspect;
     const scale = H / vwidth;
 
     const lineMe = (c1: Coord, c2: Coord) => {
@@ -56,13 +53,19 @@ export function renderCart2(
                 singles[`${p1.section}:${p1.ring},${p1.row}`] ||
                 singles[`${p2.section}:${p2.ring},${p2.row}`];
             cartesian.back.push(
-                <line
-                    x1={(c1.x + cr) * scale}
-                    y1={c1.y * scale}
-                    x2={(c2.x - cr) * scale}
-                    y2={c2.y * scale}
+                <path
+                    d={`M${(c1.x + cr) * scale} ${c1.y * scale}L${
+                        (c2.x - cr) * scale
+                    } ${c2.y * scale}`}
+                    // d={`M${(c1.x + cr) * scale} ${c1.y * scale}A${(
+                    //     scale * 2
+                    // ).toFixed(2)} ${(scale * 2).toFixed(2)} 0 0 0 ${(
+                    //     (c2.x - cr) *
+                    //     scale
+                    // ).toFixed(2)} ${(c2.y * scale).toFixed(2)}`}
                     strokeWidth={5}
                     stroke={needed ? '#f55' : '#009'}
+                    strokeDasharray="10 5"
                 />,
             );
             return;
@@ -92,19 +95,33 @@ export function renderCart2(
     };
 
     grid.forEach((items, gx) => {
-        items.forEach((point, gy) => {
+        items.forEach((_, gy) => {
             const self = { x: gx, y: gy };
-            const up = { x: gx, y: gy - 1 };
             const down = { x: gx, y: gy + 1 };
-            const left = { x: gx - 1, y: gy };
             const right = { x: gx + 1, y: gy };
-            // right & down, render;
             lineMe(self, right);
             lineMe(self, down);
         });
     });
 
     grid.forEach((items, gx) => {
+        const rows = sections[items[0].section].rows;
+        if (items[0].row === ((rows / 2) | 0)) {
+            const off = rows / 2 - ((rows / 2) | 0);
+            cartesian.back.push(
+                <text
+                    x={(gx - off + 0.5) * scale}
+                    y={(items.length - 0.5) * scale}
+                    style={{ pointerEvents: 'none', userSelect: 'none' }}
+                    fill="white"
+                    textAnchor="middle"
+                    fontFamily="monospace"
+                    fontSize={20}
+                >
+                    {items[0].section + 1}
+                </text>,
+            );
+        }
         items.forEach((point, gy) => {
             const needed =
                 singles[`${point.section}:${point.ring},${point.row}`];
@@ -118,7 +135,6 @@ export function renderCart2(
                     cy={gy * scale}
                     r={0.07 * scale}
                     fill={slid ? 'green' : needed ? 'red' : '#222'}
-                    // opacity={0.8}
                 />,
                 <circle
                     key={`touch-${gx}-${gy}`}
@@ -138,10 +154,10 @@ export function renderCart2(
                         cursor: 'pointer',
                         transition: 'fill 0.3s ease',
                     }}
-                    // className="hover"
                     onMouseEnter={() => setHoverPoint(point)}
                     onMouseLeave={() => setHoverPoint(null)}
                     onMouseDown={(evt) => {
+                        evt.preventDefault();
                         setSlide({ type: 'add2', items: [{ x: gx, y: gy }] });
                     }}
                 />,
@@ -167,6 +183,7 @@ export function renderCart2(
                 }
             }}
             onMouseMove={(evt) => {
+                evt.preventDefault();
                 const box = evt.currentTarget.getBoundingClientRect();
                 const x = evt.clientX - box.left - m;
                 const y = evt.clientY - box.top - m;

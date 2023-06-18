@@ -9,7 +9,8 @@ and do a more convincing loop-around.
 - [x] add "rows" to sections
 - [x] add/remove "sections"
 - [x] export pls
-- [ ] rainbowwwwwww
+- [x] rainbowwwwwww
+- [ ] when removing a section, bring things together
 - [ ] show N & S
 - [ ] round round round round round
 

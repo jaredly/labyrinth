@@ -153,7 +153,7 @@ export function renderCircular(
                 strokeLinecap="round"
                 fill="none"
                 stroke={pairs[pk] ? 'blue' : missing}
-                strokeWidth={1}
+                strokeWidth={5}
                 onClick={() =>
                     dispatch({
                         type: 'toggle',
@@ -232,7 +232,7 @@ export function renderCircular(
                     strokeLinecap="round"
                     fill="none"
                     stroke={needed ? 'blue' : '#300'}
-                    strokeWidth={1}
+                    strokeWidth={5}
                 />,
             );
         }
