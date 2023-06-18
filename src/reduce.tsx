@@ -20,6 +20,18 @@ export const reduce = (state: State, action: Action): State => {
                     { rows: 2, pairs: {} },
                 ],
             };
+        case 'rotate-sections':
+            return {
+                ...state,
+                sections:
+                    action.count < 0
+                        ? state.sections
+                              .slice(-action.count)
+                              .concat(state.sections.slice(0, -action.count))
+                        : state.sections
+                              .slice(action.count)
+                              .concat(state.sections.slice(0, action.count)),
+            };
         case 'reset':
             return action.state;
         case 'sections':

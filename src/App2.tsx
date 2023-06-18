@@ -78,6 +78,7 @@ export type Action =
     | { type: 'reset'; state: State }
     | { type: 'addrow'; section: number; row: number }
     | { type: 'addring'; ring: number }
+    | { type: 'rotate-sections'; count: number }
     | { type: 'rmring'; ring: number }
     | { type: 'rmrow'; section: number; row: number }
     | { type: 'sections'; sections: State['sections'] };
@@ -200,6 +201,20 @@ export const App2 = () => {
             <div>
                 <button onClick={() => dispatch({ type: 'clear' })}>
                     Clear
+                </button>
+                <button
+                    onClick={() =>
+                        dispatch({ type: 'rotate-sections', count: -1 })
+                    }
+                >
+                    Left
+                </button>
+                <button
+                    onClick={() =>
+                        dispatch({ type: 'rotate-sections', count: 1 })
+                    }
+                >
+                    Right
                 </button>
                 <ExportButton csvg={cref} svg={ref} state={state} />
                 {hoverPoint

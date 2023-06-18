@@ -50,6 +50,7 @@ export type Polar = {
     x: number;
     y: number;
     offset: number;
+    section: number;
     col: number;
     rx: number;
     ry: number;
@@ -59,6 +60,42 @@ export type SectionMap = {
     [pos: string]: Polar;
 };
 
+export const calcPolar = (
+    {
+        pos: { x, y },
+        col,
+        section,
+    }: {
+        pos: Coord;
+        col: number;
+        section: number;
+    },
+    config: {
+        r0: number;
+        dr: number;
+        sections: Section[];
+    },
+): Polar => {
+    const { r0, dr } = config;
+    const r = (r0 + x) * dr;
+    let t = calcSectionTheta(section, config.sections);
+    const { rows } = config.sections[section];
+    const offset = y - (rows / 2 - 0.5);
+    t += (offset * dr) / r;
+    t = normalizeAngle(t);
+    return {
+        t,
+        r,
+        x,
+        y,
+        offset,
+        section,
+        col,
+        rx: Math.cos(t) * r,
+        ry: Math.sin(t) * r,
+    };
+};
+
 export const calcLocation = ({
     pos: { x, y },
     dr,
@@ -66,6 +103,7 @@ export const calcLocation = ({
     sectionTheta,
     rows,
     col,
+    section,
 }: {
     pos: Coord;
     r0: number;
@@ -73,6 +111,7 @@ export const calcLocation = ({
     rows: number;
     dr: number;
     col: number;
+    section: number;
 }): Polar => {
     const r = (r0 + x) * dr;
     let t = sectionTheta;
@@ -86,6 +125,7 @@ export const calcLocation = ({
         y,
         offset,
         col,
+        section,
         rx: Math.cos(t) * r,
         ry: Math.sin(t) * r,
     };
@@ -100,7 +140,7 @@ export const sectionMap2 = (
     const mapping: SectionMap = {};
     let col = 0;
     sections.forEach(({ rows, pairs }, i) => {
-        const sectionTheta = (i / sections.length) * Math.PI * 2 + Math.PI / 2;
+        const sectionTheta = calcSectionTheta(i, sections);
         Object.keys(pairs)
             .filter((k) => pairs[k])
             .forEach((key) => {
@@ -112,6 +152,7 @@ export const sectionMap2 = (
                     r0,
                     rows,
                     col: col + p1.y,
+                    section: i,
                 });
                 mapping[`${i}:${p2.x},${p2.y}`] = calcLocation({
                     pos: { x: width - 1 - p2.x, y: p2.y },
@@ -120,6 +161,7 @@ export const sectionMap2 = (
                     r0,
                     rows,
                     col: col + p2.y,
+                    section: i,
                 });
             });
         col += rows;
@@ -218,3 +260,6 @@ export const pointDistance = (
             return dist;
         });
 };
+export function calcSectionTheta(i: number, sections: Section[]) {
+    return (i / sections.length) * Math.PI * 2 + Math.PI / 2;
+}

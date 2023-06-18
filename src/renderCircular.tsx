@@ -121,6 +121,9 @@ export function renderCircular(
             (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
 
         const pk = pairKey(p1, p2);
+        if (line && pairs[pk]) {
+            return;
+        }
         const pos = pairs[pk] ? 'front' : 'back';
 
         circular[pos].push(
@@ -136,6 +139,7 @@ export function renderCircular(
                             r0,
                             rows: state.sections[section].rows,
                             col: col + p1.y,
+                            section,
                         }),
                         calcLocation({
                             pos: { x: width - p2.x, y: p2.y },
@@ -144,6 +148,7 @@ export function renderCircular(
                             r0,
                             rows: state.sections[section].rows,
                             col: col + p2.y,
+                            section,
                         }),
                     ],
                     VW / 2,
@@ -192,6 +197,7 @@ export function renderCircular(
                 r0,
                 rows: sections[i].rows,
                 col: col + hoverPoint.row,
+                section: i,
             });
             const x = Math.cos(pos.t) * pos.r + VW / 2;
             const y = Math.sin(pos.t) * pos.r + VW / 2;
@@ -203,6 +209,10 @@ export function renderCircular(
             const k1 = `${i}:${x},${rows - 1}`;
             const k2 = `${(i + 1) % sections.length}:${x},${0}`;
             const needed = singles[k1] || singles[k2];
+            if (needed && line) {
+                continue;
+            }
+            const nsi = (i + 1) % sections.length;
             circular.mid.push(
                 <path
                     key={`${i} ${x} - connector`}
@@ -215,14 +225,16 @@ export function renderCircular(
                                 r0,
                                 rows: sections[i].rows,
                                 col: 0,
+                                section: i,
                             }),
                             calcLocation({
                                 pos: { x: width - x, y: 0 },
                                 sectionTheta: nsectionTheta,
                                 dr,
                                 r0,
-                                rows: sections[(i + 1) % sections.length].rows,
+                                rows: sections[nsi].rows,
                                 col: 1,
+                                section: nsi,
                             }),
                         ],
                         VW / 2,
@@ -252,32 +264,43 @@ export function renderCircular(
                 r0,
                 rows: sections[+section].rows,
                 col: sectionCols[+section] + y,
+                section: +section,
             });
         });
 
-        const color = false;
+        const color = true;
         if (color) {
             const dists = pointDistance2(polars);
 
             circular.front.push(
-                ...showColor2(polars, VW / 2, VW / 2, dists, 5, totalCols),
+                ...showColor2(
+                    polars,
+                    VW / 2,
+                    VW / 2,
+                    dists,
+                    dr - 2,
+                    totalCols,
+                    {
+                        dr,
+                        r0,
+                        sections,
+                    },
+                ),
             );
         } else {
             circular.front.push(
                 <path
                     key={`themaindeal`}
-                    d={calcPathPartsInner(
-                        polars,
-                        VW / 2,
-                        VW / 2,
-                        totalCols,
-                        dr / 2,
-                    ).join(' ')}
+                    d={calcPathPartsInner(polars, VW / 2, VW / 2, totalCols, {
+                        dr,
+                        r0,
+                        sections,
+                    }).join(' ')}
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     fill="none"
-                    stroke={'red'}
-                    strokeWidth={5}
+                    stroke={'blue'}
+                    strokeWidth={dr - 2}
                 />,
             );
         }
