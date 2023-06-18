@@ -1,6 +1,6 @@
 import React from 'react';
 import { State, W, H, Coord } from './App';
-import { SectionMap } from './sections';
+import { Polar, SectionMap } from './sections';
 
 const closeEnough = (a: number, b: number) => Math.abs(a - b) < 0.001;
 
@@ -73,13 +73,13 @@ export const calcPathParts = (
     cy: number,
     cols: number,
 ): { paths: string[]; polar: (typeof sectionMap)[''][] } => {
-    const keys = points
+    const polar = points
         .map(({ x, y }) => ({ x: size.width - 1 - x, y }))
         .map(({ x, y }) => `${x},${y}`)
         .map((key) => sectionMap[key])
         .filter(Boolean);
 
-    return calcPathPartsInner(keys, cx, cy, cols);
+    return { paths: calcPathPartsInner(polar, cx, cy, cols), polar };
 };
 
 export const showColor2 = (
@@ -90,7 +90,7 @@ export const showColor2 = (
     dr: number,
     cols: number,
 ) => {
-    const { paths } = calcPathPartsInner(polar, cx, cy, cols);
+    const paths = calcPathPartsInner(polar, cx, cy, cols);
 
     const max = dists[dists.length - 1];
 
@@ -115,12 +115,12 @@ export const showColor2 = (
 };
 
 export const calcPathPartsInner = (
-    polar: SectionMap[''][],
+    polar: Polar[],
     cx: number,
     cy: number,
     cols: number,
     rounded?: number,
-): { paths: string[]; polar: SectionMap[''][] } => {
+): string[] => {
     // console.log('ya', polar.length);
     const paths = polar.map((pos, i) => {
         const x = pos.rx + cx;
@@ -134,11 +134,11 @@ export const calcPathPartsInner = (
                 const next = polar[i + 1];
                 if (next.y !== pos.y) {
                     const r = pos.r + rounded * (prev.r > pos.r ? 1 : -1);
-                    let ncw = isClockwise(next, pos, cols);
-                    if (next.y < pos.y) {
-                        ncw = !ncw;
-                    }
-                    let t = pos.t + (rounded * (ncw ? 1 : -1)) / pos.r;
+                    // let ncw = isClockwise(next, pos, cols);
+                    // if (next.y < pos.y) {
+                    //     ncw = !ncw;
+                    // }
+                    // let t = pos.t + (rounded * (ncw ? 1 : -1)) / pos.r;
                     return `L${Math.cos(pos.t) * r + cx} ${
                         Math.sin(pos.t) * r + cy
                     }`;
@@ -160,7 +160,7 @@ export const calcPathPartsInner = (
             sweepFlag ? '1' : '0'
         } ${x} ${y}`;
     });
-    return { polar, paths };
+    return paths;
 };
 
 export const epsilon = 0.000001;

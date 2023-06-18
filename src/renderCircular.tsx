@@ -149,7 +149,7 @@ export function renderCircular(
                     VW / 2,
                     VW / 2,
                     totalCols,
-                ).paths.join(' ')}
+                ).join(' ')}
                 strokeLinecap="round"
                 fill="none"
                 stroke={pairs[pk] ? 'blue' : missing}
@@ -228,7 +228,7 @@ export function renderCircular(
                         VW / 2,
                         VW / 2,
                         totalCols,
-                    ).paths.join(' ')}
+                    ).join(' ')}
                     strokeLinecap="round"
                     fill="none"
                     stroke={needed ? 'blue' : '#300'}
@@ -272,7 +272,7 @@ export function renderCircular(
                         VW / 2,
                         totalCols,
                         dr / 2,
-                    ).paths.join(' ')}
+                    ).join(' ')}
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     fill="none"
