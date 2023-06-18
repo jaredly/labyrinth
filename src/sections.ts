@@ -44,16 +44,19 @@ const ySectionMap = (sections: number[], height: number) => {
     return map;
 };
 
+export type Polar = {
+    t: number;
+    r: number;
+    x: number;
+    y: number;
+    offset: number;
+    col: number;
+    rx: number;
+    ry: number;
+};
+
 export type SectionMap = {
-    [pos: string]: {
-        t: number;
-        r: number;
-        x: number;
-        y: number;
-        offset: number;
-        col: number;
-        // section: number;
-    };
+    [pos: string]: Polar;
 };
 
 export const calcLocation = ({
@@ -70,18 +73,21 @@ export const calcLocation = ({
     rows: number;
     dr: number;
     col: number;
-}) => {
+}): Polar => {
     const r = (r0 + x) * dr;
     let t = sectionTheta;
     const offset = y - (rows / 2 - 0.5);
     t += (offset * dr) / r;
+    t = normalizeAngle(t);
     return {
-        t: normalizeAngle(t),
+        t,
         r,
         x,
         y,
         offset,
         col,
+        rx: Math.cos(t) * r,
+        ry: Math.sin(t) * r,
     };
 };
 

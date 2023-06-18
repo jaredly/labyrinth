@@ -94,7 +94,7 @@ export function renderCircular(
     hoverPoint: GridPoint | null,
     line: string[] | null,
 ) {
-    const VW = 300;
+    const VW = 800;
     const vm = 5;
 
     const R = VW / 2;
@@ -255,10 +255,8 @@ export function renderCircular(
             });
         });
 
-        const color = true;
+        const color = false;
         if (color) {
-            // const dists = [];
-
             const dists = pointDistance2(polars);
 
             circular.front.push(
@@ -273,6 +271,7 @@ export function renderCircular(
                         VW / 2,
                         VW / 2,
                         totalCols,
+                        dr / 2,
                     ).paths.join(' ')}
                     strokeLinecap="round"
                     strokeLinejoin="round"

@@ -119,19 +119,38 @@ export const calcPathPartsInner = (
     cx: number,
     cy: number,
     cols: number,
+    rounded?: number,
 ): { paths: string[]; polar: SectionMap[''][] } => {
     // console.log('ya', polar.length);
     const paths = polar.map((pos, i) => {
-        const x = Math.cos(pos.t) * pos.r + cx;
-        const y = Math.sin(pos.t) * pos.r + cy;
+        const x = pos.rx + cx;
+        const y = pos.ry + cy;
         if (i == 0) {
             return `M${x} ${y}`;
         }
         const prev = polar[i - 1];
         if (prev.y === pos.y) {
+            if (rounded != null && i < polar.length - 1) {
+                const next = polar[i + 1];
+                if (next.y !== pos.y) {
+                    const r = pos.r + rounded * (prev.r > pos.r ? 1 : -1);
+                    let ncw = isClockwise(next, pos, cols);
+                    if (next.y < pos.y) {
+                        ncw = !ncw;
+                    }
+                    let t = pos.t + (rounded * (ncw ? 1 : -1)) / pos.r;
+                    return `L${Math.cos(pos.t) * r + cx} ${
+                        Math.sin(pos.t) * r + cy
+                    }`;
+                    //  +
+                    // `A ${rounded} ${rounded} 0 0 ${ncw ? '0' : '1'} ${
+                    //     Math.cos(t) * pos.r + cx
+                    // } ${Math.sin(t) * pos.r + cy}`
+                }
+            }
             return `L${x} ${y}`;
         }
-        const cw = pos.col === (prev.col + 1) % cols;
+        const cw = isClockwise(pos, prev, cols);
         // console.log(pos.col, prev.col);
         const delta = angleBetween(pos.t, prev.t, cw);
 
@@ -192,6 +211,10 @@ export const angleBetween = (
     }
     return res;
 };
+
+function isClockwise(pos: SectionMap[''], prev: SectionMap[''], cols: number) {
+    return pos.col === (prev.col + 1) % cols;
+}
 
 export function rainbow(percent: number): string | undefined {
     return `hsl(${(percent * 180).toFixed(0)}, 100%, 50%)`;
