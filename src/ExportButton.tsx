@@ -1,6 +1,7 @@
 import React from 'react';
 import { PREFIX, SUFFIX } from './useDropTarget';
 import { H, State, W } from './App';
+import hash from 'object-hash';
 
 export function ExportButton({
     svg,
@@ -15,6 +16,7 @@ export function ExportButton({
         <button
             onClick={() => {
                 const svgText = svg.current!.outerHTML;
+                const theHash = hash(JSON.stringify(state));
                 const blob = new Blob(
                     [
                         `<svg height="${Math.max(
@@ -39,7 +41,7 @@ export function ExportButton({
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `labyrinth-${Date.now()}.svg`;
+                a.download = `labyrinth-${theHash}.svg`;
                 a.click();
                 setTimeout(() => {
                     URL.revokeObjectURL(url);

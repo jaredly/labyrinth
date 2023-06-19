@@ -10,7 +10,7 @@ of this labyrinth
 
 # V4???
 
-- [ ] make it so that it still shows rainbows even if there are breaks
+- [x] make it so that it still shows rainbows even if there are breaks
   - just have multiple lines, its fine
 - [ ] hovering a section number should highlight the section?
 - [ ] removing a layer should remove the things on it as well.
