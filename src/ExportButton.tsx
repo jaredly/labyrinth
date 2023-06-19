@@ -17,8 +17,9 @@ export function ExportButton({
                 const svgText = svg.current!.outerHTML;
                 const blob = new Blob(
                     [
-                        `<svg height="${csvg.current?.getAttribute(
-                            'height',
+                        `<svg height="${Math.max(
+                            +csvg.current?.getAttribute('height')!,
+                            +svg.current?.getAttribute('height')!,
                         )}" width="${
                             +csvg.current!.getAttribute('width')! +
                             +svg.current!.getAttribute('width')!

@@ -81,7 +81,9 @@ export const calcPolar = (
     let t = calcSectionTheta(section, config.sections);
     const { rows } = config.sections[section];
     const offset = y - (rows / 2 - 0.5);
-    t += (offset * dr) / r;
+    if (r > 0) {
+        t += (offset * dr) / r;
+    }
     t = normalizeAngle(t);
     return {
         t,
@@ -116,7 +118,9 @@ export const calcLocation = ({
     const r = (r0 + x) * dr;
     let t = sectionTheta;
     const offset = y - (rows / 2 - 0.5);
-    t += (offset * dr) / r;
+    if (r > 0) {
+        t += (offset * dr) / r;
+    }
     t = normalizeAngle(t);
     return {
         t,

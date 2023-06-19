@@ -36,7 +36,7 @@ export const AddRing = ({
                 x={0}
                 y={0}
                 width={55}
-                height={state.rings * scale - scale}
+                height={state.rings * scale}
                 fill="transparent"
                 style={{ cursor: 'none' }}
             />
@@ -76,28 +76,32 @@ export const AddRing = ({
                         stroke={'white'}
                         strokeWidth={2}
                     />
-                    <circle
-                        cx={25}
-                        cy={0}
-                        fill="red"
-                        r={10}
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => {
-                            dispatch({
-                                type: 'rmring',
-                                ring: pos.ring,
-                            });
-                            setPos({ ...pos, ring: pos.ring - 1 });
-                        }}
-                    />
-                    <path
-                        transform="translate(25,0)"
-                        d={`M-7 0 L7 0`}
-                        style={{ pointerEvents: 'none' }}
-                        fill="none"
-                        stroke={'white'}
-                        strokeWidth={2}
-                    />
+                    {pos.ring > 0 ? (
+                        <>
+                            <circle
+                                cx={25}
+                                cy={0}
+                                fill="red"
+                                r={10}
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => {
+                                    dispatch({
+                                        type: 'rmring',
+                                        ring: pos.ring,
+                                    });
+                                    setPos({ ...pos, ring: pos.ring - 1 });
+                                }}
+                            />
+                            <path
+                                transform="translate(25,0)"
+                                d={`M-7 0 L7 0`}
+                                style={{ pointerEvents: 'none' }}
+                                fill="none"
+                                stroke={'white'}
+                                strokeWidth={2}
+                            />
+                        </>
+                    ) : null}
                 </g>
             ) : null}
         </g>

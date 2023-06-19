@@ -1,5 +1,20 @@
 
+# For Condos
+
+Make it so you can calculate the length of walls.
+like, how to cut up some rope to make the walls
+of this labyrinth
+
+
+- [ ] ooh for downloading, I could uniquely identify by hash. that would be cool.
+
 # V4???
+
+- [ ] make it so that it still shows rainbows even if there are breaks
+  - just have multiple lines, its fine
+- [ ] hovering a section number should highlight the section?
+- [ ] removing a layer should remove the things on it as well.
+- [ ] adding a column should bridge automatically
 
 So, I want to change the orientation.
 And change the way I calculate where I think you're going.
@@ -12,8 +27,8 @@ and do a more convincing loop-around.
 - [x] rainbowwwwwww
 - [ ] when removing a section, bring things together
 - [ ] show N & S
-- [ ] round round round round round
-  - [ ] round round round
+- [x] round round round round round
+  - [x] round round round
 
 
 # V3

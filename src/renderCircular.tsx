@@ -19,7 +19,7 @@ export const organizeLine = (
     sections: Section[],
     singles: { [key: string]: number },
 ) => {
-    const withConnectors = { ...singles };
+    // const withConnectors = { ...singles };
     const connected: { [key: string]: string[] } = {};
     const connect = (k1: string, k2: string) => {
         if (!connected[k1]) {
@@ -40,8 +40,8 @@ export const organizeLine = (
             const sn = (i + 1) % sections.length;
             const k2 = `${sn}:${ring},${0}`;
             if (singles[k] || singles[k2]) {
-                withConnectors[k] = (withConnectors[k] || 0) + 1;
-                withConnectors[k2] = (withConnectors[k2] || 0) + 1;
+                // withConnectors[k] = (withConnectors[k] || 0) + 1;
+                // withConnectors[k2] = (withConnectors[k2] || 0) + 1;
                 connect(k, k2);
             }
         }
@@ -51,37 +51,56 @@ export const organizeLine = (
         });
     });
 
-    const ends = Object.entries(withConnectors)
-        .filter(([a, b]) => b === 1)
-        .map(([k, v]) => {
-            const [section, pos] = k.split(':');
-            const [ring, row] = pos.split(',');
-            return {
-                section,
-                pos: { ring: +ring, row: +row },
-            };
-        })
-        .sort((a, b) => a.pos.ring - b.pos.ring);
-    if (!ends.length || ends[0].pos.ring !== 0) {
+    // const ends = Object.entries(withConnectors)
+    //     .filter(([a, b]) => b === 1)
+    //     .map(([k, v]) => {
+    //         const [section, pos] = k.split(':');
+    //         const [ring, row] = pos.split(',');
+    //         return {
+    //             k,
+    //             section,
+    //             pos: { ring: +ring, row: +row },
+    //         };
+    //     })
+    //     .sort((a, b) => a.pos.ring - b.pos.ring);
+    // So a loop we still bail
+    // if (!ends.length) {
+    //     return null;
+    // }
+    const next = () => {
+        return Object.entries(connected)
+            .filter(([_, v]) => v.length === 1)
+            .map(([k, v]) => ({ k, ring: +k.split(':')[1].split(',')[0] }))
+            .sort((a, b) => a.ring - b.ring)[0]?.k;
+    };
+    const first = next();
+    if (!first) {
         return null;
     }
+    const lines: string[][] = [[first]];
 
-    const line: string[] = [
-        `${ends[0].section}:${ends[0].pos.ring},${ends[0].pos.row}`,
-    ];
-    // console.log('LINEARIZE');
+    // const line: string[] = [ends[0].k];
     while (true) {
+        const line = lines[lines.length - 1];
         const last = line[line.length - 1];
         if (connected[last].length !== 1) {
-            break;
+            const first = next();
+            if (!first) {
+                break;
+            }
+            delete connected[last];
+            lines.push([first]);
+            continue;
         }
         const got = connected[last][0];
         delete connected[last];
-        // console.log(last, '->', got);
         connected[got] = connected[got].filter((k) => k !== last);
         line.push(got);
     }
-    return line;
+
+    Object.keys(connected).forEach((k) => lines.push([k]));
+
+    return lines;
 };
 
 export function renderCircular(
@@ -92,14 +111,14 @@ export function renderCircular(
     sections: Section[],
     singles: { [key: string]: number },
     hoverPoint: GridPoint | null,
-    line: string[] | null,
+    lines: string[][] | null,
 ) {
     const VW = 800;
     const vm = 5;
 
     const R = VW / 2;
     const dr = R / (width + (state.inner ?? 1) + 1);
-    const r0 = state.inner ?? 1;
+    const r0 = -1; // state.inner ?? 1;
 
     const sectionCols: number[] = [];
     let col = 0;
@@ -121,7 +140,7 @@ export function renderCircular(
             (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
 
         const pk = pairKey(p1, p2);
-        if (line && pairs[pk]) {
+        if (lines && pairs[pk]) {
             return;
         }
         const pos = pairs[pk] ? 'front' : 'back';
@@ -209,7 +228,7 @@ export function renderCircular(
             const k1 = `${i}:${x},${rows - 1}`;
             const k2 = `${(i + 1) % sections.length}:${x},${0}`;
             const needed = singles[k1] || singles[k2];
-            if (needed && line) {
+            if (needed && lines) {
                 continue;
             }
             const nsi = (i + 1) % sections.length;
@@ -250,60 +269,68 @@ export function renderCircular(
         }
     });
 
-    if (line) {
-        const polars = line.map((k) => {
-            const [section, pos] = k.split(':');
-            const [ring, row] = pos.split(',');
-            const sectionTheta =
-                (+section / sections.length) * Math.PI * 2 + Math.PI / 2;
-            const y = +row; //sections[+section].rows - +row;
-            return calcLocation({
-                pos: { x: width - +ring, y: y },
-                sectionTheta,
-                dr,
-                r0,
-                rows: sections[+section].rows,
-                col: sectionCols[+section] + y,
-                section: +section,
+    if (lines) {
+        lines.forEach((line) => {
+            const polars = line.map((k) => {
+                const [section, pos] = k.split(':');
+                const [ring, row] = pos.split(',');
+                const sectionTheta =
+                    (+section / sections.length) * Math.PI * 2 + Math.PI / 2;
+                const y = +row; //sections[+section].rows - +row;
+                return calcLocation({
+                    pos: { x: width - +ring, y: y },
+                    sectionTheta,
+                    dr,
+                    r0,
+                    rows: sections[+section].rows,
+                    col: sectionCols[+section] + y,
+                    section: +section,
+                });
             });
+
+            const color = true;
+            if (color) {
+                const dists = pointDistance2(polars);
+
+                circular.front.push(
+                    ...showColor2(
+                        polars,
+                        VW / 2,
+                        VW / 2,
+                        dists,
+                        dr - 2,
+                        totalCols,
+                        {
+                            dr,
+                            r0,
+                            sections,
+                        },
+                    ),
+                );
+            } else {
+                circular.front.push(
+                    <path
+                        key={`themaindeal`}
+                        d={calcPathPartsInner(
+                            polars,
+                            VW / 2,
+                            VW / 2,
+                            totalCols,
+                            {
+                                dr,
+                                r0,
+                                sections,
+                            },
+                        ).join(' ')}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
+                        stroke={'blue'}
+                        strokeWidth={dr - 2}
+                    />,
+                );
+            }
         });
-
-        const color = true;
-        if (color) {
-            const dists = pointDistance2(polars);
-
-            circular.front.push(
-                ...showColor2(
-                    polars,
-                    VW / 2,
-                    VW / 2,
-                    dists,
-                    dr - 2,
-                    totalCols,
-                    {
-                        dr,
-                        r0,
-                        sections,
-                    },
-                ),
-            );
-        } else {
-            circular.front.push(
-                <path
-                    key={`themaindeal`}
-                    d={calcPathPartsInner(polars, VW / 2, VW / 2, totalCols, {
-                        dr,
-                        r0,
-                        sections,
-                    }).join(' ')}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                    stroke={'blue'}
-                    strokeWidth={dr - 2}
-                />,
-            );
-        }
     }
 
     return (

@@ -17,7 +17,6 @@ export type Section = {
 export type State = {
     version: 3;
     sections: Section[];
-    selection: number[];
     rings: number;
     inner?: number;
     circle?: number;
@@ -25,7 +24,6 @@ export type State = {
 
 export const initialState: State = {
     version: 3,
-    selection: [],
     rings: 7,
     sections: [
         { rows: 3, pairs: {} },
@@ -155,7 +153,7 @@ export const App2 = () => {
     const ref = useRef<SVGSVGElement>(null);
     const cref = useRef<SVGSVGElement>(null);
 
-    const line = organizeLine(state.rings, sections, singles);
+    const lines = organizeLine(state.rings, sections, singles);
     // console.log('line', line);
 
     const cartesian = renderCart2(
@@ -195,7 +193,7 @@ export const App2 = () => {
                     sections,
                     singles,
                     hoverPoint,
-                    line,
+                    lines,
                 )}
             </div>
             <div>

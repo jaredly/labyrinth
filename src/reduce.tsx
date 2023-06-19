@@ -79,7 +79,9 @@ export const reduce = (state: State, action: Action): State => {
                 sections: state.sections.map((s) => {
                     const pairs = parsePairs(s.pairs).map(
                         ([p1, p2]): [Coord, Coord] =>
-                            p1.x > action.ring
+                            action.ring === 0 ||
+                            p1.x > action.ring ||
+                            p2.x > action.ring
                                 ? [
                                       { x: p1.x + 1, y: p1.y },
                                       { x: p2.x + 1, y: p2.y },
