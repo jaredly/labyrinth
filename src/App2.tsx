@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { reduceLocalStorage } from './App';
-import { organizeLine, renderCircular } from './renderCircular';
+import { renderCircular } from './renderCircular';
+import { organizeLine } from './organizeLine';
 import { GridPoint, buildGrid, renderCart2 } from './renderCart2';
 import { ExportButton } from './ExportButton';
 import { reduce } from './reduce';
@@ -174,6 +175,7 @@ export const App2 = () => {
             dispatch({ type: 'reset', state });
         }
     }, migrateState);
+    const [color, setColor] = useState(true);
 
     return (
         <div {...callbacks}>
@@ -194,9 +196,13 @@ export const App2 = () => {
                     singles,
                     hoverPoint,
                     lines,
+                    color,
                 )}
             </div>
             <div>
+                <button onClick={() => setColor(!color)}>
+                    {color ? 'Hide color' : 'Show color'}
+                </button>
                 <button onClick={() => dispatch({ type: 'clear' })}>
                     Clear
                 </button>

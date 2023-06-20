@@ -42,7 +42,7 @@ export function renderCart2(
     const H = W / (grid.length / grid[0].length);
     const scale = H / vwidth;
 
-    const lineMe = (c1: Coord, c2: Coord) => {
+    const lineMe = (c1: Coord, c2: Coord, key: string) => {
         const p1 = grid[c1.x]?.[c1.y];
         const p2 = grid[c2.x]?.[c2.y];
         if (!p1 || !p2) {
@@ -54,6 +54,7 @@ export function renderCart2(
                 singles[`${p2.section}:${p2.ring},${p2.row}`];
             cartesian.back.push(
                 <path
+                    key={key}
                     d={`M${(c1.x + cr) * scale} ${c1.y * scale}L${
                         (c2.x - cr) * scale
                     } ${c2.y * scale}`}
@@ -80,6 +81,7 @@ export function renderCart2(
 
         cartesian.back.push(
             <line
+                key={key}
                 x1={(c1.x + xr) * scale}
                 y1={(c1.y + yr) * scale}
                 x2={(c2.x - xr) * scale}
@@ -99,8 +101,8 @@ export function renderCart2(
             const self = { x: gx, y: gy };
             const down = { x: gx, y: gy + 1 };
             const right = { x: gx + 1, y: gy };
-            lineMe(self, right);
-            lineMe(self, down);
+            lineMe(self, right, `${gx}:${gy}:r`);
+            lineMe(self, down, `${gx}:${gy}:d`);
         });
     });
 
@@ -110,6 +112,7 @@ export function renderCart2(
             const off = rows / 2 - ((rows / 2) | 0);
             cartesian.back.push(
                 <text
+                    key={'text' + gx}
                     x={(gx - off + 0.5) * scale}
                     y={(items.length - 0.5) * scale}
                     style={{ pointerEvents: 'none', userSelect: 'none' }}

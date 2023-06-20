@@ -10,98 +10,8 @@ import {
     pairKey,
     missing,
     ungroup,
-    parsePairs,
 } from './App2';
 import { GridPoint } from './renderCart2';
-
-export const organizeLine = (
-    rings: number,
-    sections: Section[],
-    singles: { [key: string]: number },
-) => {
-    // const withConnectors = { ...singles };
-    const connected: { [key: string]: string[] } = {};
-    const connect = (k1: string, k2: string) => {
-        if (!connected[k1]) {
-            connected[k1] = [k2];
-        } else {
-            connected[k1].push(k2);
-        }
-        if (!connected[k2]) {
-            connected[k2] = [k1];
-        } else {
-            connected[k2].push(k1);
-        }
-    };
-
-    sections.forEach(({ pairs, rows }, i) => {
-        for (let ring = 0; ring < rings; ring++) {
-            const k = `${i}:${ring},${rows - 1}`;
-            const sn = (i + 1) % sections.length;
-            const k2 = `${sn}:${ring},${0}`;
-            if (singles[k] || singles[k2]) {
-                // withConnectors[k] = (withConnectors[k] || 0) + 1;
-                // withConnectors[k2] = (withConnectors[k2] || 0) + 1;
-                connect(k, k2);
-            }
-        }
-
-        parsePairs(pairs).forEach(([p1, p2]) => {
-            connect(`${i}:${p1.x},${p1.y}`, `${i}:${p2.x},${p2.y}`);
-        });
-    });
-
-    // const ends = Object.entries(withConnectors)
-    //     .filter(([a, b]) => b === 1)
-    //     .map(([k, v]) => {
-    //         const [section, pos] = k.split(':');
-    //         const [ring, row] = pos.split(',');
-    //         return {
-    //             k,
-    //             section,
-    //             pos: { ring: +ring, row: +row },
-    //         };
-    //     })
-    //     .sort((a, b) => a.pos.ring - b.pos.ring);
-    // So a loop we still bail
-    // if (!ends.length) {
-    //     return null;
-    // }
-    const next = () => {
-        return Object.entries(connected)
-            .filter(([_, v]) => v.length === 1)
-            .map(([k, v]) => ({ k, ring: +k.split(':')[1].split(',')[0] }))
-            .sort((a, b) => a.ring - b.ring)[0]?.k;
-    };
-    const first = next();
-    if (!first) {
-        return null;
-    }
-    const lines: string[][] = [[first]];
-
-    // const line: string[] = [ends[0].k];
-    while (true) {
-        const line = lines[lines.length - 1];
-        const last = line[line.length - 1];
-        if (connected[last].length !== 1) {
-            const first = next();
-            if (!first) {
-                break;
-            }
-            delete connected[last];
-            lines.push([first]);
-            continue;
-        }
-        const got = connected[last][0];
-        delete connected[last];
-        connected[got] = connected[got].filter((k) => k !== last);
-        line.push(got);
-    }
-
-    Object.keys(connected).forEach((k) => lines.push([k]));
-
-    return lines;
-};
 
 export function renderCircular(
     ref: React.RefObject<SVGSVGElement>,
@@ -112,6 +22,7 @@ export function renderCircular(
     singles: { [key: string]: number },
     hoverPoint: GridPoint | null,
     lines: string[][] | null,
+    color: boolean,
 ) {
     const VW = 800;
     const vm = 5;
@@ -135,6 +46,7 @@ export function renderCircular(
         p2: Coord,
         pairs: State['sections'][0]['pairs'],
         col: number,
+        front = false,
     ) => {
         const sectionTheta =
             (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
@@ -143,7 +55,7 @@ export function renderCircular(
         if (lines && pairs[pk]) {
             return;
         }
-        const pos = pairs[pk] ? 'front' : 'back';
+        const pos = front || pairs[pk] ? 'front' : 'back';
 
         circular[pos].push(
             <path
@@ -176,8 +88,8 @@ export function renderCircular(
                 ).join(' ')}
                 strokeLinecap="round"
                 fill="none"
-                stroke={pairs[pk] ? 'blue' : missing}
-                strokeWidth={5}
+                stroke={front ? 'black' : pairs[pk] ? 'blue' : missing}
+                strokeWidth={front ? 2 : 5}
                 onClick={() =>
                     dispatch({
                         type: 'toggle',
@@ -207,22 +119,6 @@ export function renderCircular(
         const nsectionTheta =
             ((i + 1) / sections.length) * Math.PI * 2 + Math.PI / 2;
         // console.log(singles);
-
-        if (hoverPoint?.section === i) {
-            const pos = calcLocation({
-                pos: { x: width - hoverPoint.ring, y: hoverPoint.row },
-                sectionTheta,
-                dr,
-                r0,
-                rows: sections[i].rows,
-                col: col + hoverPoint.row,
-                section: i,
-            });
-            const x = Math.cos(pos.t) * pos.r + VW / 2;
-            const y = Math.sin(pos.t) * pos.r + VW / 2;
-
-            circular.front.push(<circle cx={x} cy={y} r={5} fill="red" />);
-        }
 
         for (let x = 0; x < width; x++) {
             const k1 = `${i}:${x},${rows - 1}`;
@@ -270,7 +166,7 @@ export function renderCircular(
     });
 
     if (lines) {
-        lines.forEach((line) => {
+        lines.forEach((line, i) => {
             const polars = line.map((k) => {
                 const [section, pos] = k.split(':');
                 const [ring, row] = pos.split(',');
@@ -288,7 +184,6 @@ export function renderCircular(
                 });
             });
 
-            const color = true;
             if (color) {
                 const dists = pointDistance2(polars);
 
@@ -299,6 +194,7 @@ export function renderCircular(
                         VW / 2,
                         dists,
                         dr - 2,
+                        // 10,
                         totalCols,
                         {
                             dr,
@@ -310,7 +206,7 @@ export function renderCircular(
             } else {
                 circular.front.push(
                     <path
-                        key={`themaindeal`}
+                        key={`themaindeal` + i}
                         d={calcPathPartsInner(
                             polars,
                             VW / 2,
@@ -332,6 +228,102 @@ export function renderCircular(
             }
         });
     }
+
+    sections.forEach(({ pairs, rows }, i) => {
+        col = sectionCols[i];
+        for (let x = 0; x < width - 1; x++) {
+            for (let y = 0; y < rows; y++) {
+                const p1 = pairKey({ x, y }, { x: x - 1, y });
+                if (!pairs[p1]) {
+                    addCircular(
+                        i,
+                        { x: x - 0.5, y: y - 0.5 },
+                        { x: x - 0.5, y: y + 0.5 },
+                        pairs,
+                        col,
+                        true,
+                    );
+                }
+                const p2 = pairKey({ x, y }, { x, y: y + 1 });
+                if (x < width - 2 && y < rows - 1 && !pairs[p2]) {
+                    addCircular(
+                        i,
+                        { x: x - 0.5, y: y + 0.5 },
+                        { x: x + 0.5, y: y + 0.5 },
+                        pairs,
+                        col,
+                        true,
+                    );
+                }
+            }
+        }
+
+        const sectionTheta = (i / sections.length) * Math.PI * 2 + Math.PI / 2;
+        const nsectionTheta =
+            ((i + 1) / sections.length) * Math.PI * 2 + Math.PI / 2;
+
+        for (let x = 0; x < width - 1; x++) {
+            const k1 = `${i}:${x},${rows - 1}`;
+            const k2 = `${(i + 1) % sections.length}:${x},${0}`;
+            const nsi = (i + 1) % sections.length;
+            circular.front.push(
+                <path
+                    key={`${i} ${x} - connector 2`}
+                    d={calcPathPartsInner(
+                        [
+                            calcLocation({
+                                pos: { x: width - x + 0.5, y: rows - 0.5 },
+                                sectionTheta,
+                                dr,
+                                r0,
+                                rows: sections[i].rows,
+                                col: 0,
+                                section: i,
+                            }),
+                            calcLocation({
+                                pos: { x: width - x + 0.5, y: -0.5 },
+                                sectionTheta: nsectionTheta,
+                                dr,
+                                r0,
+                                rows: sections[nsi].rows,
+                                col: 1,
+                                section: nsi,
+                            }),
+                        ],
+                        VW / 2,
+                        VW / 2,
+                        totalCols,
+                    ).join(' ')}
+                    strokeLinecap="round"
+                    fill="none"
+                    stroke={'black'}
+                    strokeWidth={2}
+                />,
+            );
+        }
+    });
+
+    sections.forEach(({ pairs, rows }, i) => {
+        if (hoverPoint?.section === i) {
+            const sectionTheta =
+                (i / state.sections.length) * Math.PI * 2 + Math.PI / 2;
+            const pos = calcLocation({
+                pos: { x: width - hoverPoint.ring, y: hoverPoint.row },
+                sectionTheta,
+                dr,
+                r0,
+                rows: sections[i].rows,
+                col: col + hoverPoint.row,
+                section: i,
+            });
+            const x = Math.cos(pos.t) * pos.r + VW / 2;
+            const y = Math.sin(pos.t) * pos.r + VW / 2;
+
+            circular.front.push(
+                <circle key={'hover'} cx={x} cy={y} r={15} fill="red" />,
+            );
+        }
+    });
 
     return (
         <svg

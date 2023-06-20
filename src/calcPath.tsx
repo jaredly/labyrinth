@@ -37,6 +37,7 @@ export const showColor = (
         const y = Math.sin(pos.t) * pos.r + cy;
         return (
             <path
+                key={i}
                 d={`M${x} ${y} ${item}`}
                 strokeWidth={dr}
                 strokeLinecap="round"
@@ -109,6 +110,7 @@ export const showColor2 = (
         const y = Math.sin(pos.t) * pos.r + cy;
         return (
             <path
+                key={i}
                 d={item}
                 strokeWidth={dr}
                 strokeLinecap="round"

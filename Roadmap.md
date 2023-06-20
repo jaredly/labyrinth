@@ -6,7 +6,7 @@ like, how to cut up some rope to make the walls
 of this labyrinth
 
 
-- [ ] ooh for downloading, I could uniquely identify by hash. that would be cool.
+- [x] ooh for downloading, I could uniquely identify by hash. that would be cool.
 
 # V4???
 
@@ -15,6 +15,9 @@ of this labyrinth
 - [ ] hovering a section number should highlight the section?
 - [ ] removing a layer should remove the things on it as well.
 - [ ] adding a column should bridge automatically
+
+- [x] basic separators
+- [x] maybe I can haz a curve?
 
 So, I want to change the orientation.
 And change the way I calculate where I think you're going.
