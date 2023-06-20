@@ -50,7 +50,7 @@ export const organizeLine = (
     while (true) {
         const line = lines[lines.length - 1];
         const last = line[line.length - 1];
-        if (connected[last].length !== 1) {
+        if (connected[last].length === 0) {
             const first = next();
             if (!first) {
                 break;
@@ -60,9 +60,12 @@ export const organizeLine = (
             continue;
         }
         const got = connected[last][0];
-        delete connected[last];
-        connected[got] = connected[got].filter((k) => k !== last);
         line.push(got);
+        delete connected[last];
+        if (!connected[got]) {
+            break;
+        }
+        connected[got] = connected[got].filter((k) => k !== last);
     }
 
     Object.keys(connected).forEach((k) => lines.push([k]));

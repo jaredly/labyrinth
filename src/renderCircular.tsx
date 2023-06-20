@@ -392,7 +392,7 @@ export function renderCircular(
                                 ? `-${(pos / 100) * length}`
                                 : undefined
                         }
-                        stroke="#55f"
+                        stroke="#77f"
                         strokeLinecap="round"
                         strokeWidth={mode === 'dot' ? 20 : 10}
                         fill="none"
