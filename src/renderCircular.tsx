@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { calcLocation, pointDistance2 } from './sections';
 import { calcPathPartsInner, showColor2 } from './calcPath';
 import {
@@ -165,6 +165,8 @@ export function renderCircular(
         }
     });
 
+    const svgpaths: string[] = [];
+
     if (lines) {
         lines.forEach((line, i) => {
             const polars = line.map((k) => {
@@ -204,20 +206,22 @@ export function renderCircular(
                     ),
                 );
             } else {
+                const d = calcPathPartsInner(
+                    polars,
+                    VW / 2,
+                    VW / 2,
+                    totalCols,
+                    {
+                        dr,
+                        r0,
+                        sections,
+                    },
+                ).join(' ');
+                svgpaths.push(d);
                 circular.front.push(
                     <path
                         key={`themaindeal` + i}
-                        d={calcPathPartsInner(
-                            polars,
-                            VW / 2,
-                            VW / 2,
-                            totalCols,
-                            {
-                                dr,
-                                r0,
-                                sections,
-                            },
-                        ).join(' ')}
+                        d={d}
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         fill="none"
@@ -325,14 +329,80 @@ export function renderCircular(
         }
     });
 
+    const [pos, setPos] = useState(50);
+
+    const [length, setLength] = useState(null as null | number);
+
+    const p = svgpaths.length ? new Path2D(svgpaths[0]) : null;
+
+    const [timer, setTimer] = useState(null as null | number);
+
+    useEffect(() => {
+        if (timer == null) return;
+
+        setPos(0);
+
+        // every 20 ms is 50x per second
+        // timer * 60 * 50 // number of steps
+
+        const iid = setInterval(() => {
+            setPos((p) => p + 100 / (timer * 60 * 50));
+        }, 20);
+        const to = setTimeout(() => {
+            setTimer(null);
+        }, timer * 60 * 1000);
+
+        return () => {
+            clearInterval(iid);
+            clearTimeout(to);
+        };
+    }, [timer]);
+
     return (
-        <svg
-            ref={ref}
-            width={VW + vm * 2}
-            height={VW + vm * 2}
-            style={{ marginTop: 50 - vm, backgroundColor: '#0a0a0a' }}
-        >
-            <g transform={`translate(${vm},${vm})`}>{ungroup(circular)}</g>
-        </svg>
+        <div>
+            <svg
+                ref={ref}
+                width={VW + vm * 2}
+                height={VW + vm * 2}
+                style={{ marginTop: 50 - vm, backgroundColor: '#0a0a0a' }}
+            >
+                <g transform={`translate(${vm},${vm})`}>
+                    {ungroup(circular)}
+                    <path
+                        ref={(node) => {
+                            if (node) {
+                                if (length == null) {
+                                    setLength(node.getTotalLength());
+                                }
+                            }
+                        }}
+                        d={svgpaths[0]}
+                        strokeDasharray={
+                            length
+                                ? `${(pos / 100) * length} ${
+                                      (1 - pos / 100) * length
+                                  }`
+                                : undefined
+                        }
+                        stroke="#55f"
+                        strokeLinecap="round"
+                        strokeWidth={10}
+                        fill="none"
+                    />
+                </g>
+            </svg>
+            <input
+                type="range"
+                min="0"
+                max="100"
+                step="0.1"
+                value={pos}
+                onChange={(evt) => setPos(+evt.target.value)}
+            />
+            {length}
+            <button onClick={() => setTimer(10)}>10 minute</button>
+            <button onClick={() => setTimer(5)}>5 minute</button>
+            <button onClick={() => setTimer(1)}>1 minute</button>
+        </div>
     );
 }

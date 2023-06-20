@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { reduceLocalStorage } from './App';
+import { reduceLocalStorage, useLocalStorage } from './App';
 import { renderCircular } from './renderCircular';
 import { organizeLine } from './organizeLine';
 import { GridPoint, buildGrid, renderCart2 } from './renderCart2';
@@ -175,7 +175,7 @@ export const App2 = () => {
             dispatch({ type: 'reset', state });
         }
     }, migrateState);
-    const [color, setColor] = useState(true);
+    const [color, setColor] = useLocalStorage('show-color', () => false);
 
     return (
         <div {...callbacks}>

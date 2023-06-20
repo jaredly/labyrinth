@@ -1,4 +1,23 @@
 
+# Ok friends, now that ... I can generate things to cnc route
+how about some good old
+animations
+and games
+perhaps
+
+## Simplest Idea
+
+Meditation timer
+- show a labyrinth, it slowly fills up, then retreats
+
+- Need to do a "path fill" thing, right?
+
+## More complex idea
+
+You're ~navigating the labyrinth, turning your phone around (detected using deviceorientationchange w/ magnetometer)
+to turn, press & hold to "move forward". idk.
+
+
 # For Condos
 
 Make it so you can calculate the length of walls.
