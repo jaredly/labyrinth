@@ -5,6 +5,13 @@ animations
 and games
 perhaps
 
+- [x] basic animate!
+- [ ] in & out please
+- [ ] better "stop" mechanism
+- [ ] have it be a separate mode probably?
+- [ ] umm mobile friendly?
+- [x] have a "dot" mode, where you just follow the dot
+
 ## Simplest Idea
 
 Meditation timer

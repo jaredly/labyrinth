@@ -357,6 +357,7 @@ export function renderCircular(
             clearTimeout(to);
         };
     }, [timer]);
+    const [mode, setMode] = useState('line' as 'line' | 'dot');
 
     return (
         <div>
@@ -379,30 +380,44 @@ export function renderCircular(
                         d={svgpaths[0]}
                         strokeDasharray={
                             length
-                                ? `${(pos / 100) * length} ${
-                                      (1 - pos / 100) * length
-                                  }`
+                                ? mode === 'line'
+                                    ? `${(pos / 100) * length} ${
+                                          (1 - pos / 100) * length
+                                      }`
+                                    : `5 1000000`
+                                : undefined
+                        }
+                        strokeDashoffset={
+                            length && mode === 'dot'
+                                ? `-${(pos / 100) * length}`
                                 : undefined
                         }
                         stroke="#55f"
                         strokeLinecap="round"
-                        strokeWidth={10}
+                        strokeWidth={mode === 'dot' ? 20 : 10}
                         fill="none"
                     />
                 </g>
             </svg>
-            <input
-                type="range"
-                min="0"
-                max="100"
-                step="0.1"
-                value={pos}
-                onChange={(evt) => setPos(+evt.target.value)}
-            />
-            {length}
-            <button onClick={() => setTimer(10)}>10 minute</button>
-            <button onClick={() => setTimer(5)}>5 minute</button>
-            <button onClick={() => setTimer(1)}>1 minute</button>
+            <div>
+                <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={pos}
+                    onChange={(evt) => setPos(+evt.target.value)}
+                />
+                {length}
+                <button onClick={() => setTimer(10)}>10 minute</button>
+                <button onClick={() => setTimer(5)}>5 minute</button>
+                <button onClick={() => setTimer(1)}>1 minute</button>
+                <button
+                    onClick={() => setMode(mode === 'line' ? 'dot' : 'line')}
+                >
+                    Line / Dot
+                </button>
+            </div>
         </div>
     );
 }
