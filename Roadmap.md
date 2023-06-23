@@ -12,6 +12,9 @@ perhaps
 - [ ] umm mobile friendly?
 - [x] have a "dot" mode, where you just follow the dot
 
+
+- [ ] make a version where you zoom in and follow the leading point!
+
 ## Simplest Idea
 
 Meditation timer

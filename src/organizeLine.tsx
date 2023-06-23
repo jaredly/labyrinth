@@ -68,7 +68,12 @@ export const organizeLine = (
         connected[got] = connected[got].filter((k) => k !== last);
     }
 
-    Object.keys(connected).forEach((k) => lines.push([k]));
+    Object.keys(connected).forEach((k) => {
+        const dests = connected[k];
+        if (dests.length === 1) {
+            lines.push([k, dests[0]]);
+        }
+    });
 
     return lines;
 };

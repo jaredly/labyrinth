@@ -1,11 +1,9 @@
-import React, { useRef, useState } from 'react';
-import { reduceLocalStorage, useLocalStorage } from './App';
-import { renderCircular } from './renderCircular';
-import { organizeLine } from './organizeLine';
-import { GridPoint, buildGrid, renderCart2 } from './renderCart2';
-import { ExportButton } from './ExportButton';
+import React from 'react';
+import { reduceLocalStorage, useLocalStorage } from './reduceLocalStorage';
+import { GridPoint } from './renderCart2';
 import { reduce } from './reduce';
-import { useDropStateTarget } from './useDropTarget';
+import { Edit } from './Edit';
+import { Animate } from './Animate';
 export type Coord = { x: number; y: number };
 
 export type Section = {
@@ -113,6 +111,8 @@ export type Slide =
           }[];
       };
 
+export type Screen = 'edit' | 'animate';
+
 export const App2 = () => {
     const [state, dispatch] = reduceLocalStorage(
         'labyrinth-v3',
@@ -122,111 +122,15 @@ export const App2 = () => {
         // true,
     );
 
-    var bounds = calcBounds(state);
+    const [screen, setScreen] = useLocalStorage<Screen>(
+        'labyrinth-screen',
+        () => 'edit',
+    );
 
-    if (!state.rings) {
-        state.rings = 7;
+    if (screen === 'edit') {
+        return <Edit state={state} dispatch={dispatch} setScreen={setScreen} />;
     }
-
-    const [hoverPoint, setHoverPoint] = useState(null as null | GridPoint);
-
-    const [slide, setSlide] = useState(null as Slide | null);
-
-    const grid: GridPoint[][] = buildGrid(state.sections, bounds.vwidth);
-
-    const sections = slide
-        ? mergeTmp(slide, grid, state.sections)
-        : state.sections;
-
-    const singles: { [key: string]: number } = {};
-    sections.forEach(({ pairs }, i) => {
-        const add = ({ x, y }: Coord) => {
-            const k = `${i}:${x},${y}`;
-            if (singles[k]) {
-                singles[k]++;
-            } else if (singles[k] == null) {
-                singles[k] = 1;
-            }
-        };
-        parsePairs(pairs).forEach((pair) => pair.map(add));
-    });
-
-    const ref = useRef<SVGSVGElement>(null);
-    const cref = useRef<SVGSVGElement>(null);
-
-    const lines = organizeLine(state.rings, sections, singles);
-    // console.log('line', line);
-
-    const cartesian = renderCart2(
-        cref,
-        state,
-        grid,
-        setSlide,
-        sections,
-        bounds,
-        slide,
-        singles,
-        dispatch,
-        hoverPoint,
-        setHoverPoint,
-    );
-    const [dragging, callbacks] = useDropStateTarget((state) => {
-        if (state) {
-            dispatch({ type: 'reset', state });
-        }
-    }, migrateState);
-    const [color, setColor] = useLocalStorage('show-color', () => false);
-
-    return (
-        <div {...callbacks}>
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    flexWrap: 'wrap',
-                }}
-            >
-                {cartesian}
-                {renderCircular(
-                    ref,
-                    state,
-                    bounds.width,
-                    dispatch,
-                    sections,
-                    singles,
-                    hoverPoint,
-                    lines,
-                    color,
-                )}
-            </div>
-            <div>
-                <button onClick={() => setColor(!color)}>
-                    {color ? 'Hide color' : 'Show color'}
-                </button>
-                <button onClick={() => dispatch({ type: 'clear' })}>
-                    Clear
-                </button>
-                <button
-                    onClick={() =>
-                        dispatch({ type: 'rotate-sections', count: -1 })
-                    }
-                >
-                    Left
-                </button>
-                <button
-                    onClick={() =>
-                        dispatch({ type: 'rotate-sections', count: 1 })
-                    }
-                >
-                    Right
-                </button>
-                <ExportButton csvg={cref} svg={ref} state={state} />
-                {hoverPoint
-                    ? `${hoverPoint.section}:${hoverPoint.ring},${hoverPoint.row}`
-                    : ''}
-            </div>
-        </div>
-    );
+    return <Animate state={state} setScreen={setScreen} />;
 };
 
 export type SecionCoord = {
@@ -253,7 +157,7 @@ export const svgPos = (evt: React.MouseEvent<SVGSVGElement>) => {
 
 export const exact = (n: number) => Math.round(n) === n;
 
-function calcBounds(state: State) {
+export function calcBounds(state: State) {
     let mx = 0;
     let width = state.rings ?? 7;
     let rowTotal = 0;
@@ -294,7 +198,11 @@ export const pairsToObject = (pairs: [Coord, Coord][]) => {
     return obj;
 };
 
-function mergeTmp(slide: Slide, grid: GridPoint[][], sections: Section[]) {
+export function mergeTmp(
+    slide: Slide,
+    grid: GridPoint[][],
+    sections: Section[],
+) {
     sections = sections.map(({ pairs, rows }) => ({
         pairs: { ...pairs },
         rows,

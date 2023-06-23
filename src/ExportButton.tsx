@@ -1,6 +1,5 @@
 import React from 'react';
 import { PREFIX, SUFFIX } from './useDropTarget';
-import { H, State, W } from './App';
 import hash from 'object-hash';
 
 export function ExportButton({
@@ -15,7 +14,6 @@ export function ExportButton({
     return (
         <button
             onClick={() => {
-                const svgText = svg.current!.outerHTML;
                 const theHash = hash(JSON.stringify(state));
                 const blob = new Blob(
                     [
@@ -49,6 +47,29 @@ export function ExportButton({
             }}
         >
             Export
+        </button>
+    );
+}
+
+export function ExportJSONButton({ state }: { state: any }) {
+    return (
+        <button
+            onClick={() => {
+                const theHash = hash(JSON.stringify(state));
+                const blob = new Blob([JSON.stringify(state, null, 2)], {
+                    type: 'application/json',
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `labyrinth-${theHash}.json`;
+                a.click();
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                }, 100);
+            }}
+        >
+            Export JSON
         </button>
     );
 }

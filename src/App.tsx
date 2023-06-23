@@ -6,6 +6,7 @@ import { useDropStateTarget } from './useDropTarget';
 import { SectionsInput } from './SectionsInput';
 import { CartesianEdits } from './CartesianEdits';
 import { ExportButton } from './ExportButton';
+import { reduceLocalStorage, useLocalStorage } from './reduceLocalStorage';
 
 export type Coord = { x: number; y: number };
 
@@ -18,36 +19,6 @@ export type State = {
     sections: number[];
     inner?: number;
     circle?: number;
-};
-
-export const reduceLocalStorage = <T, A>(
-    key: string,
-    initial: () => T,
-    reduce: (state: T, action: A) => T,
-    migrate: (state: any) => T = (x) => x,
-    disable = false,
-) => {
-    const [state, dispatch] = React.useReducer(reduce, null, () =>
-        localStorage[key] ? migrate(JSON.parse(localStorage[key])) : initial(),
-    );
-    React.useEffect(() => {
-        if (state != null && !disable) {
-            localStorage[key] = JSON.stringify(state);
-        }
-    }, [state, disable]);
-    return [state, dispatch] as const;
-};
-
-export const useLocalStorage = <T,>(key: string, initial: () => T) => {
-    const [state, setState] = React.useState<T>(
-        localStorage[key] ? JSON.parse(localStorage[key]) : initial(),
-    );
-    React.useEffect(() => {
-        if (state != null) {
-            localStorage[key] = JSON.stringify(state);
-        }
-    }, [state]);
-    return [state, setState] as const;
 };
 
 export const migrateState = (state: State) => {
