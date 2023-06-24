@@ -1,26 +1,35 @@
 import React from 'react';
-import { reduceLocalStorage } from './App';
-import { sectionMap } from './sections';
-import { calcPath, calcPathParts } from './calcPath';
-import { Addliness } from './Addliness';
+import { reduceLocalStorage, useLocalStorage } from './reduceLocalStorage';
+import { GridPoint } from './renderCart2';
+import { reduce } from './reduce';
+import { Edit } from './Edit';
+import { Animate } from './Animate';
 export type Coord = { x: number; y: number };
 
+export type Section = {
+    rows: number;
+    pairs: {
+        [key: string]: boolean;
+    };
+};
+
 export type State = {
-    version: 2;
-    size: { _width: number; height: number };
-    pairs: { [key: string]: boolean };
-    selection: number[];
-    sections: number[];
+    version: 3;
+    sections: Section[];
+    rings: number;
     inner?: number;
     circle?: number;
 };
 
 export const initialState: State = {
-    version: 2,
-    size: { _width: 10, height: 10 },
-    pairs: {},
-    selection: [],
-    sections: [-0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 10.5],
+    version: 3,
+    rings: 7,
+    sections: [
+        { rows: 3, pairs: {} },
+        { rows: 2, pairs: {} },
+        { rows: 2, pairs: {} },
+        { rows: 2, pairs: {} },
+    ],
 };
 
 const pki = (one: Coord, two: Coord) => `${one.x},${one.y}:${two.x},${two.y}`;
@@ -39,283 +48,192 @@ export const parseKey = (key: string) =>
         .map(([x, y]) => ({ x, y })) as [Coord, Coord];
 
 export const migrateState = (state: State) => {
-    if (!state.version) {
-        if ('points' in state) {
-            const pts = state.points as Coord[];
-            state.pairs = {};
-            for (let i = 1; i < pts.length; i++) {
-                state.pairs[pairKey(pts[i - 1], pts[i])] = true;
-            }
-        }
-        state.version = 2;
+    if (state.version < 3) {
+        return initialState; // lol plz
     }
+    // if (!state.version) {
+    //     if ('points' in state) {
+    //         const pts = state.points as Coord[];
+    //         state.pairs = {};
+    //         for (let i = 1; i < pts.length; i++) {
+    //             state.pairs[pairKey(pts[i - 1], pts[i])] = true;
+    //         }
+    //     }
+    //     state.version = 2;
+    // }
+    // if (state.version < 3) {
+    //     state.sections
+    // }
     return state;
 };
 
 export type Action =
-    | { type: 'toggle'; pair: string }
-    | { type: 'remove'; row: number }
-    | { type: 'add'; row: number; high: boolean }
+    | { type: 'toggle'; pair: string; section: number }
+    | { type: 'remove'; pairs: { section: number; pair: string }[] }
+    | { type: 'slide'; slide: SecionCoord[] }
+    | { type: 'clear' }
+    | { type: 'reset'; state: State }
+    | { type: 'addrow'; section: number; row: number }
+    | { type: 'addring'; ring: number }
+    | { type: 'rotate-sections'; count: number }
+    | { type: 'rmring'; ring: number }
+    | { type: 'rmrow'; section: number; row: number }
     | { type: 'sections'; sections: State['sections'] };
 
-const reduce = (state: State, action: Action): State => {
-    switch (action.type) {
-        case 'sections':
-            return { ...state, sections: action.sections };
-        case 'toggle':
-            return {
-                ...state,
-                pairs: {
-                    ...state.pairs,
-                    [action.pair]: !state.pairs[action.pair],
-                },
-            };
-        case 'add': {
-            const pairs = parsePairs(state.pairs);
-            return {
-                ...state,
-                size: { ...state.size, height: state.size.height + 1 },
-                sections: state.sections.map((s) =>
-                    s > action.row ? s + 1 : s,
-                ),
-                pairs: pairsToObject(
-                    pairs.flatMap(([p1, p2]) => {
-                        const one: [Coord, Coord][] = [
-                            [
-                                {
-                                    x: p1.x,
-                                    y: p1.y >= action.row ? p1.y + 1 : p1.y,
-                                },
-                                {
-                                    x: p2.x,
-                                    y: p1.y >= action.row ? p2.y + 1 : p2.y,
-                                },
-                            ],
-                        ];
-                        if (p1.y < action.row && p2.y >= action.row) {
-                            one.push([
-                                { x: p1.x, y: p1.y + 1 },
-                                { x: p2.x, y: p2.y + 1 },
-                            ]);
-                        }
-                        return one;
-                    }),
-                ),
-            };
-        }
-    }
-    console.info('unandled', action);
-    return state;
-};
-
-type Grouped = {
+export type Grouped = {
     slop: JSX.Element[];
     back: JSX.Element[];
     mid: JSX.Element[];
-    front: JSX.Element[];
+    front: (JSX.Element | null)[];
 };
 
-const ungroup = (g: Grouped) => [...g.slop, ...g.back, ...g.mid, ...g.front];
+export const ungroup = (g: Grouped) => [
+    ...g.slop,
+    ...g.back,
+    ...g.mid,
+    ...g.front,
+];
+
+export type Slide =
+    | {
+          type: 'add';
+          items: SecionCoord[];
+      }
+    | {
+          type: 'add2';
+          items: Coord[];
+      }
+    | {
+          type: 'remove';
+          pairs: {
+              pair: string;
+              section: number;
+          }[];
+      };
+
+export type Screen = 'edit' | 'animate';
 
 export const App2 = () => {
     const [state, dispatch] = reduceLocalStorage(
-        'labyrinth-v2',
+        'labyrinth-v3',
         () => initialState,
         reduce,
         migrateState,
-        true,
+        // true,
     );
 
-    const pairs = parsePairs(state.pairs);
-    let mx = 0;
-    let width = 5;
-    pairs.forEach(([p1, p2]) => {
-        if (p1.x === p2.x) {
-            mx = Math.max(mx, p1.x);
-        }
-        width = Math.max(width, p1.x + 1, p2.x + 1);
-    });
-    // width =
-    const vwidth = Math.ceil((width + 1) / 3) * 3;
-
-    const W = 800;
-    const aspect = vwidth / state.size.height;
-    const H = W / aspect;
-    const m = 100;
-
-    const scale = W / vwidth;
-
-    const connectors: { [key: string]: boolean } = {};
-
-    const off = 0;
-
-    const validSections = state.sections.filter(
-        (s) => s >= -0.5 && s <= state.size.height - 1 + 0.5,
+    const [screen, setScreen] = useLocalStorage<Screen>(
+        'labyrinth-screen',
+        () => 'edit',
     );
-    // console.log(state.sections, validSections);
 
-    const size = { width, height: state.size.height };
-
-    const VW = 300;
-    const vm = 5;
-    const R = VW / 2;
-    const dr = R / (width + (state.inner ?? 0));
-    const sm = sectionMap(validSections, size, dr, state.inner ?? 1, false);
-
-    const lines: Grouped = { slop: [], back: [], mid: [], front: [] };
-    const circles: Grouped = { slop: [], back: [], mid: [], front: [] };
-
-    for (let i = -0.5; i < state.size.height + 0.5; i += 1) {
-        const idx = validSections.indexOf(i);
-        lines.front.push(
-            <circle
-                key={i}
-                cx={-50}
-                cy={scale * i}
-                data-i={i}
-                r={8}
-                fill={idx !== -1 ? (idx % 2 === 0 ? 'red' : 'blue') : 'gray'}
-                onClick={(evt) => {
-                    evt.stopPropagation();
-                    evt.preventDefault();
-                    let s = validSections.slice();
-                    if (s.includes(i)) {
-                        s = s.filter((n) => n !== i);
-                    } else {
-                        s.push(i);
-                        s.sort((a, b) => a - b);
-                    }
-                    dispatch({ type: 'sections', sections: s });
-                }}
-                style={{ cursor: 'pointer' }}
-            />,
-        );
+    if (screen === 'edit') {
+        return <Edit state={state} dispatch={dispatch} setScreen={setScreen} />;
     }
+    return <Animate state={state} setScreen={setScreen} />;
+};
 
-    validSections.forEach((s, i) => {
-        if (i % 2 === 1) {
-            // s = state.size.height - 1 - s;
-            for (let x = 0; x < vwidth; x++) {
-                const k = pairKey({ x, y: s - 0.5 }, { x, y: s + 0.5 });
-                connectors[k] = x < mx + 1;
-            }
-        }
-    });
+export type SecionCoord = {
+    section: number;
+    x: number;
+    y: number;
+};
 
-    const concol = '#666';
-    const missing = '#111';
+export const missing = '#111';
 
-    const addLine = (p1: Coord, p2: Coord) => {
-        const pk = pairKey(p1, p2);
-        const pos = state.pairs[pk] ? 'front' : connectors[pk] ? 'mid' : 'back';
-        if (connectors[pk] == null) {
-            lines.slop.push(
-                <line
-                    x1={p1.x * scale}
-                    x2={p2.x * scale}
-                    y1={p1.y * scale}
-                    y2={p2.y * scale}
-                    data-pk={pk}
-                    strokeLinecap="round"
-                    stroke={'transparent'}
-                    strokeWidth={50}
-                    onClick={() => dispatch({ type: 'toggle', pair: pk })}
-                    style={{ cursor: 'pointer' }}
-                />,
-            );
-        }
-        lines[pos].push(
-            <line
-                data-pk={pk}
-                x1={p1.x * scale}
-                x2={p2.x * scale}
-                y1={p1.y * scale}
-                y2={p2.y * scale}
-                strokeLinecap="round"
-                stroke={
-                    state.pairs[pk] ? 'red' : connectors[pk] ? concol : missing
-                }
-                strokeWidth={10}
-                onClick={
-                    connectors[pk] == null
-                        ? () => dispatch({ type: 'toggle', pair: pk })
-                        : undefined
-                }
-                style={
-                    connectors[pk] == null ? { cursor: 'pointer' } : undefined
-                }
-            />,
-        );
-        circles[pos].push(
-            <path
-                data-pk={pk}
-                d={calcPathParts([p1, p2], size, sm, VW / 2, VW / 2).paths.join(
-                    ' ',
-                )}
-                strokeLinecap="round"
-                fill="none"
-                stroke={state.pairs[pk] || connectors[pk] ? 'blue' : missing}
-                strokeWidth={5}
-                onClick={
-                    connectors[pk] == null
-                        ? () => dispatch({ type: 'toggle', pair: pk })
-                        : undefined
-                }
-                style={
-                    connectors[pk] == null ? { cursor: 'pointer' } : undefined
-                }
-            />,
-        );
+export type Rect = {
+    section: number;
+    top: number;
+    bottom: number;
+};
+
+export const svgPos = (evt: React.MouseEvent<SVGSVGElement>) => {
+    const box = evt.currentTarget.getBoundingClientRect();
+    return {
+        x: evt.clientX - box.left,
+        y: evt.clientY - box.top,
     };
-
-    for (let x = 0; x < vwidth; x++) {
-        for (let y = 0; y < state.size.height; y++) {
-            if (y < state.size.height - 1) {
-                addLine({ x, y }, { x, y: y + 1 });
-            }
-            if (x < vwidth - 1) {
-                addLine({ x, y }, { x: x + 1, y });
-            }
-        }
-    }
-
-    return (
-        <div>
-            <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                <svg width={W + m * 2} height={H + m * 2}>
-                    <g transform={`translate(${m},${m})`}>
-                        {ungroup(lines)}
-                        <Addliness
-                            dispatch={dispatch}
-                            state={state}
-                            scale={scale}
-                        />
-                    </g>
-                </svg>
-                <svg
-                    width={VW + vm * 2}
-                    height={VW + vm * 2}
-                    style={{ marginTop: 50 - vm }}
-                >
-                    <g transform={`translate(${vm},${vm})`}>
-                        {ungroup(circles)}
-                    </g>
-                </svg>
-            </div>
-        </div>
-    );
 };
 
 export const exact = (n: number) => Math.round(n) === n;
 
-function parsePairs(pairs: State['pairs']) {
+export function calcBounds(state: State) {
+    let mx = 0;
+    let width = state.rings ?? 7;
+    let rowTotal = 0;
+    state.sections.forEach(({ pairs, rows }) => {
+        rowTotal += rows;
+
+        parsePairs(pairs).forEach(([p1, p2]) => {
+            if (p1.x === p2.x) {
+                mx = Math.max(mx, p1.x);
+            }
+            // width = Math.max(width, p1.x + 1, p2.x + 1);
+        });
+    });
+    const vwidth = width; // Math.ceil((width + 2) / 3) * 3;
+    return { vwidth, width, mx, rowTotal };
+}
+
+export function relPos(
+    pos: { x: number; y: number },
+    m: number,
+    scale: number,
+): Coord {
+    return {
+        x: (pos.x - m) / scale,
+        y: (pos.y - m) / scale,
+    };
+}
+
+export function parsePairs(pairs: State['sections'][0]['pairs']) {
     return Object.keys(pairs)
         .filter((k) => pairs[k])
         .map(parseKey);
 }
 
-const pairsToObject = (pairs: [Coord, Coord][]) => {
-    const obj: State['pairs'] = {};
+export const pairsToObject = (pairs: [Coord, Coord][]) => {
+    const obj: State['sections'][0]['pairs'] = {};
     pairs.forEach((pair) => (obj[pairKey(pair[0], pair[1])] = true));
     return obj;
 };
+
+export function mergeTmp(
+    slide: Slide,
+    grid: GridPoint[][],
+    sections: Section[],
+) {
+    sections = sections.map(({ pairs, rows }) => ({
+        pairs: { ...pairs },
+        rows,
+    }));
+    if (slide.type === 'add') {
+        for (let i = 1; i < slide.items.length; i++) {
+            const last = slide.items[i - 1];
+            const one = slide.items[i];
+            if (last.section === one.section) {
+                sections[last.section].pairs[pairKey(last, one)] = true;
+            }
+        }
+    } else if (slide.type === 'add2') {
+        for (let i = 1; i < slide.items.length; i++) {
+            const lg = slide.items[i - 1];
+            const og = slide.items[i];
+            const last = grid[lg.x][lg.y];
+            const one = grid[og.x][og.y];
+            if (last.section === one.section) {
+                sections[last.section].pairs[
+                    pairKey(
+                        { x: last.ring, y: last.row },
+                        { x: one.ring, y: one.row },
+                    )
+                ] = true;
+            }
+        }
+    } else if (slide.type === 'remove') {
+        slide.pairs.forEach(({ pair, section }) => {
+            sections[section].pairs[pair] = false;
+        });
+    }
+    return sections;
+}

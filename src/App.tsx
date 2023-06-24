@@ -1,11 +1,12 @@
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { Size } from './Size';
 import { calcPath, cart, polarPath, rainbow, showColor } from './calcPath';
-import { SectionMap, pointDistance, sectionMap } from './sections';
+import { SectionMap, pointDistance } from './sections';
 import { useDropStateTarget } from './useDropTarget';
 import { SectionsInput } from './SectionsInput';
 import { CartesianEdits } from './CartesianEdits';
 import { ExportButton } from './ExportButton';
+import { reduceLocalStorage, useLocalStorage } from './reduceLocalStorage';
 
 export type Coord = { x: number; y: number };
 
@@ -18,36 +19,6 @@ export type State = {
     sections: number[];
     inner?: number;
     circle?: number;
-};
-
-export const reduceLocalStorage = <T, A>(
-    key: string,
-    initial: () => T,
-    reduce: (state: T, action: A) => T,
-    migrate: (state: any) => T = (x) => x,
-    disable = false,
-) => {
-    const [state, dispatch] = React.useReducer(reduce, null, () =>
-        localStorage[key] ? migrate(JSON.parse(localStorage[key])) : initial(),
-    );
-    React.useEffect(() => {
-        if (state != null && !disable) {
-            localStorage[key] = JSON.stringify(state);
-        }
-    }, [state, disable]);
-    return [state, dispatch] as const;
-};
-
-export const useLocalStorage = <T,>(key: string, initial: () => T) => {
-    const [state, setState] = React.useState<T>(
-        localStorage[key] ? JSON.parse(localStorage[key]) : initial(),
-    );
-    React.useEffect(() => {
-        if (state != null) {
-            localStorage[key] = JSON.stringify(state);
-        }
-    }, [state]);
-    return [state, setState] as const;
 };
 
 export const migrateState = (state: State) => {
@@ -233,7 +204,7 @@ export const App = () => {
     const R = Math.min(W - mx, H - my) / 2;
     const dr = R / (state.size.width + state.inner);
 
-    const sm = sectionMap(state.sections, state.size, dr, state.inner);
+    const sm: SectionMap = {}; // sectionMap(state.sections, state.size, dr, state.inner);
     const gr2 = [];
     for (let y = 0; y < state.size.height; y++) {
         for (let x = 0; x < state.size.width; x++) {
@@ -409,7 +380,7 @@ export const App = () => {
                     {/* {gr2} */}
                     <g transform={`translate(${mx}, ${my})`}>
                         <path
-                            d={calcPath(allPairs, state.size, sm, cx, cy)}
+                            d={calcPath(allPairs, state.size, sm, cx, cy, 0)}
                             strokeWidth={dr * 1.5}
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -436,10 +407,18 @@ export const App = () => {
                                 my,
                                 dists,
                                 dr - 4,
+                                0,
                             )
                         ) : (
                             <path
-                                d={calcPath(allPairs, state.size, sm, mx, my)}
+                                d={calcPath(
+                                    allPairs,
+                                    state.size,
+                                    sm,
+                                    mx,
+                                    my,
+                                    0,
+                                )}
                                 strokeWidth={dr - 4}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
