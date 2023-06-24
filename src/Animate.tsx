@@ -119,7 +119,10 @@ export const Animate = ({
     const amt = (pos / 100) * pathNode.getTotalLength();
     const ppos = pathNode.getPointAtLength(amt);
     const pnext = pathNode.getPointAtLength(amt + 20);
-    const t = Math.atan2(pnext.y - ppos.y, pnext.x - ppos.x);
+    const t =
+        pos >= 100 - 0.01
+            ? -Math.PI / 2
+            : Math.atan2(pnext.y - ppos.y, pnext.x - ppos.x);
 
     const SCALE = 8;
 
@@ -241,6 +244,9 @@ export const addCircular = (
     ];
 };
 
+const DASH = '1 8';
+const DASHW = 4;
+
 function produceBorders(
     nodes: JSX.Element[],
     VW: number,
@@ -259,8 +265,9 @@ function produceBorders(
                 d={calcPathPartsInner(polar, 0, 0, totalCols).join(' ')}
                 strokeLinecap="round"
                 fill="none"
+                strokeDasharray={DASH}
                 stroke={'white'}
-                strokeWidth={2}
+                strokeWidth={DASHW}
             />,
         );
     }
@@ -351,8 +358,9 @@ function produceBorders(
                     d={calcPathPartsInner([p1, p2], 0, 0, totalCols).join(' ')}
                     strokeLinecap="round"
                     fill="none"
+                    strokeDasharray={DASH}
                     stroke={'white'}
-                    strokeWidth={2}
+                    strokeWidth={DASHW}
                 />,
             );
         }
