@@ -10,12 +10,13 @@ perhaps
 - [x] basic animate!
 - [ ] in & out please
 - [ ] better "stop" mechanism
-- [ ] have it be a separate mode probably?
+- [x] have it be a separate mode probably?
 - [ ] umm mobile friendly?
 - [x] have a "dot" mode, where you just follow the dot
 
 
-- [ ] make a version where you zoom in and follow the leading point!
+
+- [x] make a version where you zoom in and follow the leading point!
 
 ## Simplest Idea
 

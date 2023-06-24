@@ -157,31 +157,46 @@ export const Animate = ({
                     >
                         <g transform={`translate(${-ppos.x} ${-ppos.y})`}>
                             {nodes}
-                            <path
-                                ref={(node) => {
-                                    if (node && length == null) {
-                                        setLength(node.getTotalLength());
+                            {mode === 'dot' ? (
+                                <circle
+                                    cx={ppos.x}
+                                    cy={ppos.y}
+                                    r={8}
+                                    fill="#77f"
+                                />
+                            ) : (
+                                <path
+                                    ref={(node) => {
+                                        if (node && length == null) {
+                                            setLength(node.getTotalLength());
+                                        }
+                                    }}
+                                    d={pathString}
+                                    strokeDasharray={
+                                        length
+                                            ? mode === 'line'
+                                                ? `${(pos / 100) * length} ${
+                                                      (1 - pos / 100) * length
+                                                  }`
+                                                : `1 1000000`
+                                            : undefined
                                     }
-                                }}
-                                d={pathString}
-                                strokeDasharray={
-                                    length
-                                        ? mode === 'line'
-                                            ? `${(pos / 100) * length} ${
-                                                  (1 - pos / 100) * length
-                                              }`
-                                            : `1 1000000`
-                                        : undefined
-                                }
-                                strokeDashoffset={
-                                    length && mode === 'dot'
-                                        ? `-${(pos / 100) * length}`
-                                        : undefined
-                                }
-                                stroke="#77f"
-                                strokeLinecap="round"
-                                strokeWidth={mode === 'dot' ? 20 : 10}
-                                fill="none"
+                                    strokeDashoffset={
+                                        length && mode === 'dot'
+                                            ? `-${(pos / 100) * length}`
+                                            : undefined
+                                    }
+                                    stroke="#77f"
+                                    strokeLinecap="round"
+                                    strokeWidth={mode === 'dot' ? 20 : 10}
+                                    fill="none"
+                                />
+                            )}
+                            <circle
+                                cx={ppos.x}
+                                cy={ppos.y}
+                                r={3}
+                                fill="#0a0a0a"
                             />
                         </g>
                     </g>
