@@ -116,13 +116,35 @@ export const Animate = ({
         if (!speed.run) return;
         // setPos(0);
         const iid = setInterval(() => {
-            setSpeed((s) =>
-                !s.run
+            setSpeed((s) => {
+                if (!s.run) {
+                    return s;
+                }
+                if (s.pos >= length) {
+                    return { ...s, run: false };
+                }
+                if (s.pos < length - s.speed * 2) {
+                    const one = pathNode.getPointAtLength(s.pos);
+                    const two = pathNode.getPointAtLength(s.pos + s.speed);
+                    const three = pathNode.getPointAtLength(
+                        s.pos + s.speed * 2,
+                    );
+                    const a1 = Math.atan2(one.y - two.y, one.x - two.x);
+                    const a2 = Math.atan2(three.y - two.y, three.x - two.x);
+                    const angle = angleBetween(a1, a2, true);
+                    const off = Math.abs(angle - Math.PI);
+                    // TODO: Slow more at higher curve, less at lower curve
+                    if (off > Math.PI / 20) {
+                        return { ...s, pos: s.pos + s.speed / 4 };
+                    }
+                }
+
+                return !s.run
                     ? s
                     : s.pos >= length
                     ? { ...s, run: false }
-                    : { ...s, pos: s.pos + s.speed },
-            );
+                    : { ...s, pos: s.pos + s.speed };
+            });
             // setPos((p) => p >= 1 ? {...p} : p + speedRef.current.speed);
         }, 20);
         // const to = setTimeout(() => {

@@ -14,6 +14,9 @@ perhaps
 - [ ] umm mobile friendly?
 - [x] have a "dot" mode, where you just follow the dot
 
+- [ ] speed up along straightaways.
+  can I just have it be based on current curvature? could be fun
+
 
 
 - [x] make a version where you zoom in and follow the leading point!
