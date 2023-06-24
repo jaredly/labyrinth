@@ -62,20 +62,208 @@ export const Animate = ({
 
     const nodes: JSX.Element[] = [];
 
-    const addPolar = (polar: Polar[], key: string) => {
+    produceBorders(
+        nodes,
+        VW,
+        totalCols,
+        state,
+        col,
+        sectionCols,
+        bounds,
+        dr,
+        r0,
+    );
+
+    const pathString = React.useMemo(
+        () =>
+            calcPathPartsInner(polars, 0, 0, totalCols, {
+                dr,
+                r0,
+                sections: state.sections,
+            }).join(' '),
+        [state.sections, dr, r0, polars, totalCols],
+    );
+    const [mode, setMode] = React.useState('line' as 'line' | 'dot');
+
+    const pathNode = React.useMemo(() => {
+        const node = document.createElementNS(
+            'http://www.w3.org/2000/svg',
+            'path',
+        );
+        node.setAttribute('d', pathString);
+        // const length = node.getTotalLength();
+        // console.log('d len', length);
+        // node.getPointAtLength
+        return node;
+    }, [pathString]);
+
+    const [pos, setPos] = React.useState(50);
+    const [length, setLength] = React.useState(null as null | number);
+    const [timer, setTimer] = React.useState(null as null | number);
+
+    React.useEffect(() => {
+        if (timer == null) return;
+        setPos(0);
+        const iid = setInterval(() => {
+            setPos((p) => p + 100 / (timer * 60 * 50));
+        }, 20);
+        const to = setTimeout(() => {
+            setTimer(null);
+        }, timer * 60 * 1000);
+        return () => {
+            clearInterval(iid);
+            clearTimeout(to);
+        };
+    }, [timer]);
+
+    const amt = (pos / 100) * pathNode.getTotalLength();
+    const ppos = pathNode.getPointAtLength(amt);
+    const pnext = pathNode.getPointAtLength(amt + 20);
+    const t = Math.atan2(pnext.y - ppos.y, pnext.x - ppos.x);
+
+    const SCALE = 8;
+
+    const c = VW / 2;
+    // rotate(${-(t / Math.PI) * 180})
+    // rotate(${-(t / Math.PI) * 180})
+    return (
+        <div>
+            <div>
+                <button onClick={() => setScreen('edit')}>Edit</button>
+            </div>
+            <svg
+                width={VW + vm * 2}
+                height={VW + vm * 2}
+                style={{ marginTop: 50 - vm, backgroundColor: '#0a0a0a' }}
+            >
+                <g transform={`translate(${VW / 2}, ${VW / 2})`}>
+                    <g
+                        transform={`
+                            rotate(${-(t / Math.PI) * 180 - 90})
+                            scale(${SCALE} ${SCALE})
+                        `}
+                    >
+                        <g transform={`translate(${-ppos.x} ${-ppos.y})`}>
+                            {nodes}
+                            <path
+                                ref={(node) => {
+                                    if (node && length == null) {
+                                        setLength(node.getTotalLength());
+                                    }
+                                }}
+                                d={pathString}
+                                strokeDasharray={
+                                    length
+                                        ? mode === 'line'
+                                            ? `${(pos / 100) * length} ${
+                                                  (1 - pos / 100) * length
+                                              }`
+                                            : `1 1000000`
+                                        : undefined
+                                }
+                                strokeDashoffset={
+                                    length && mode === 'dot'
+                                        ? `-${(pos / 100) * length}`
+                                        : undefined
+                                }
+                                stroke="#77f"
+                                strokeLinecap="round"
+                                strokeWidth={mode === 'dot' ? 20 : 10}
+                                fill="none"
+                            />
+                        </g>
+                    </g>
+                </g>
+            </svg>
+            <div>
+                <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={pos}
+                    onChange={(evt) => setPos(+evt.target.value)}
+                />
+                <span style={{ marginRight: 8 }} />
+                {length?.toFixed(0)}
+                <span style={{ marginRight: 8 }} />
+                <button onClick={() => setTimer(timer === 10 ? null : 10)}>
+                    10 minute
+                </button>
+                <button onClick={() => setTimer(timer === 5 ? null : 5)}>
+                    5 minute
+                </button>
+                <button onClick={() => setTimer(timer === 1 ? null : 1)}>
+                    1 minute
+                </button>
+                <button
+                    onClick={() => setMode(mode === 'line' ? 'dot' : 'line')}
+                >
+                    Line / Dot
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export const addCircular = (
+    dr: number,
+    r0: number,
+    width: number,
+    state: State,
+    section: number,
+    p1: Coord,
+    p2: Coord,
+    col: number,
+) => {
+    const sectionTheta =
+        (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
+
+    return [
+        calcLocation({
+            pos: { x: width - p1.x, y: p1.y },
+            sectionTheta,
+            dr,
+            r0,
+            rows: state.sections[section].rows,
+            col: col + p1.y,
+            section,
+        }),
+        calcLocation({
+            pos: { x: width - p2.x, y: p2.y },
+            sectionTheta,
+            dr,
+            r0,
+            rows: state.sections[section].rows,
+            col: col + p2.y,
+            section,
+        }),
+    ];
+};
+
+function produceBorders(
+    nodes: JSX.Element[],
+    VW: number,
+    totalCols: number,
+    state: State,
+    col: number,
+    sectionCols: number[],
+    bounds: { vwidth: number; width: number; mx: number; rowTotal: number },
+    dr: number,
+    r0: number,
+) {
+    function addPolar(polar: Polar[], key: string) {
         nodes.push(
             <path
                 key={key}
-                d={calcPathPartsInner(polar, VW / 2, VW / 2, totalCols).join(
-                    ' ',
-                )}
+                d={calcPathPartsInner(polar, 0, 0, totalCols).join(' ')}
                 strokeLinecap="round"
                 fill="none"
                 stroke={'white'}
                 strokeWidth={2}
             />,
         );
-    };
+    }
 
     state.sections.forEach(({ pairs, rows }, i) => {
         col = sectionCols[i];
@@ -160,12 +348,7 @@ export const Animate = ({
                         (ang / Math.PI) *
                         180
                     ).toFixed(0)}`}
-                    d={calcPathPartsInner(
-                        [p1, p2],
-                        VW / 2,
-                        VW / 2,
-                        totalCols,
-                    ).join(' ')}
+                    d={calcPathPartsInner([p1, p2], 0, 0, totalCols).join(' ')}
                     strokeLinecap="round"
                     fill="none"
                     stroke={'white'}
@@ -174,138 +357,4 @@ export const Animate = ({
             );
         }
     });
-
-    const pathString = calcPathPartsInner(polars, VW / 2, VW / 2, totalCols, {
-        dr,
-        r0,
-        sections: state.sections,
-    }).join(' ');
-    const [mode, setMode] = React.useState('line' as 'line' | 'dot');
-
-    const [pos, setPos] = React.useState(50);
-
-    const [length, setLength] = React.useState(null as null | number);
-
-    const [timer, setTimer] = React.useState(null as null | number);
-
-    React.useEffect(() => {
-        if (timer == null) return;
-
-        setPos(0);
-
-        const iid = setInterval(() => {
-            setPos((p) => p + 100 / (timer * 60 * 50));
-        }, 20);
-        const to = setTimeout(() => {
-            setTimer(null);
-        }, timer * 60 * 1000);
-
-        return () => {
-            clearInterval(iid);
-            clearTimeout(to);
-        };
-    }, [timer]);
-
-    return (
-        <div>
-            <div>
-                <button onClick={() => setScreen('edit')}>Edit</button>
-            </div>
-            <svg
-                width={VW + vm * 2}
-                height={VW + vm * 2}
-                style={{ marginTop: 50 - vm, backgroundColor: '#0a0a0a' }}
-            >
-                <g transform={`translate(${vm},${vm})`}>
-                    {nodes}
-                    <path
-                        ref={(node) => {
-                            if (node && length == null) {
-                                setLength(node.getTotalLength());
-                            }
-                        }}
-                        d={pathString}
-                        strokeDasharray={
-                            length
-                                ? mode === 'line'
-                                    ? `${(pos / 100) * length} ${
-                                          (1 - pos / 100) * length
-                                      }`
-                                    : `1 1000000`
-                                : undefined
-                        }
-                        strokeDashoffset={
-                            length && mode === 'dot'
-                                ? `-${(pos / 100) * length}`
-                                : undefined
-                        }
-                        stroke="#77f"
-                        strokeLinecap="round"
-                        strokeWidth={mode === 'dot' ? 20 : 10}
-                        fill="none"
-                    />
-                </g>
-            </svg>
-            <div>
-                <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={pos}
-                    onChange={(evt) => setPos(+evt.target.value)}
-                />
-                {length}
-                <button onClick={() => setTimer(timer === 10 ? null : 10)}>
-                    10 minute
-                </button>
-                <button onClick={() => setTimer(timer === 5 ? null : 5)}>
-                    5 minute
-                </button>
-                <button onClick={() => setTimer(timer === 1 ? null : 1)}>
-                    1 minute
-                </button>
-                <button
-                    onClick={() => setMode(mode === 'line' ? 'dot' : 'line')}
-                >
-                    Line / Dot
-                </button>
-            </div>
-        </div>
-    );
-};
-
-export const addCircular = (
-    dr: number,
-    r0: number,
-    width: number,
-    state: State,
-    section: number,
-    p1: Coord,
-    p2: Coord,
-    col: number,
-) => {
-    const sectionTheta =
-        (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
-
-    return [
-        calcLocation({
-            pos: { x: width - p1.x, y: p1.y },
-            sectionTheta,
-            dr,
-            r0,
-            rows: state.sections[section].rows,
-            col: col + p1.y,
-            section,
-        }),
-        calcLocation({
-            pos: { x: width - p2.x, y: p2.y },
-            sectionTheta,
-            dr,
-            r0,
-            rows: state.sections[section].rows,
-            col: col + p2.y,
-            section,
-        }),
-    ];
-};
+}
