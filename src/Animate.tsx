@@ -98,24 +98,40 @@ export const Animate = ({
         return node;
     }, [pathString]);
 
-    const [pos, setPos] = React.useState(0);
-    const [length, setLength] = React.useState(null as null | number);
-    const [timer, setTimer] = React.useState(null as null | number);
+    // const [pos, setPos] = React.useState(0);
+    // const [length, setLength] = React.useState(null as null | number);
 
+    const [speed, setSpeed] = useLocalStorage('speed', () => ({
+        speed: 10,
+        run: false,
+        pos: 0,
+    }));
+    const speedRef = React.useRef(speed);
+    speedRef.current = speed;
+
+    const length = pathNode.getTotalLength();
+
+    // 100 / (timer * 60 * 50)
     React.useEffect(() => {
-        if (timer == null) return;
-        setPos(0);
+        if (!speed.run) return;
+        // setPos(0);
         const iid = setInterval(() => {
-            setPos((p) => p + 100 / (timer * 60 * 50));
+            setSpeed((s) =>
+                !s.run
+                    ? s
+                    : s.pos >= length
+                    ? { ...s, run: false }
+                    : { ...s, pos: s.pos + s.speed },
+            );
+            // setPos((p) => p >= 1 ? {...p} : p + speedRef.current.speed);
         }, 20);
-        const to = setTimeout(() => {
-            setTimer(null);
-        }, timer * 60 * 1000);
+        // const to = setTimeout(() => {
+        //     setRun(false)
+        // }, timer * 60 * 1000);
         return () => {
             clearInterval(iid);
-            clearTimeout(to);
         };
-    }, [timer]);
+    }, [speed.run, length]);
 
     const [{ scale, smooth }, setState] = useLocalStorage(
         'animate-settings',
@@ -125,11 +141,11 @@ export const Animate = ({
         }),
     );
 
-    const amt = (pos / 100) * pathNode.getTotalLength();
+    const amt = speed.pos;
     const ppos = pathNode.getPointAtLength(amt);
     const pnext = pathNode.getPointAtLength(amt + smooth);
     const t =
-        pos >= 100 - 0.01
+        speed.pos >= length - 0.01
             ? -Math.PI / 2
             : Math.atan2(pnext.y - ppos.y, pnext.x - ppos.x);
 
@@ -166,29 +182,24 @@ export const Animate = ({
                                 />
                             ) : (
                                 <path
-                                    ref={(node) => {
-                                        if (node && length == null) {
-                                            setLength(node.getTotalLength());
-                                        }
-                                    }}
+                                    // ref={(node) => {
+                                    //     if (node && length == null) {
+                                    //         setLength(node.getTotalLength());
+                                    //     }
+                                    // }}
                                     d={pathString}
                                     strokeDasharray={
                                         length
                                             ? mode === 'line'
-                                                ? `${(pos / 100) * length} ${
-                                                      (1 - pos / 100) * length
+                                                ? `${speed.pos} ${
+                                                      length - speed.pos
                                                   }`
                                                 : `1 1000000`
                                             : undefined
                                     }
-                                    strokeDashoffset={
-                                        length && mode === 'dot'
-                                            ? `-${(pos / 100) * length}`
-                                            : undefined
-                                    }
                                     stroke="#77f"
                                     strokeLinecap="round"
-                                    strokeWidth={mode === 'dot' ? 20 : 10}
+                                    strokeWidth={10}
                                     fill="none"
                                 />
                             )}
@@ -237,25 +248,73 @@ export const Animate = ({
                         }
                     />
                 </div>
+                <div>
+                    Speed
+                    <input
+                        type="range"
+                        min="0"
+                        max={20}
+                        step={0.1}
+                        value={speed.speed}
+                        onChange={(evt) =>
+                            setSpeed((s) => ({
+                                ...s,
+                                speed: +evt.target.value,
+                            }))
+                        }
+                    />
+                    {speed.speed}
+                </div>
 
                 <input
                     type="range"
                     min="0"
-                    max="100"
-                    step="0.1"
-                    value={pos}
-                    onChange={(evt) => setPos(+evt.target.value)}
+                    max={length}
+                    step={1}
+                    value={speed.pos}
+                    onChange={(evt) =>
+                        setSpeed((s) => ({ ...s, pos: +evt.target.value }))
+                    }
                 />
                 <span style={{ marginRight: 8 }} />
                 {length?.toFixed(0)}
                 <span style={{ marginRight: 8 }} />
-                <button onClick={() => setTimer(timer === 10 ? null : 10)}>
+                <button
+                    onClick={() => setSpeed((s) => ({ ...s, run: !s.run }))}
+                >
+                    {speed.run ? 'Stop' : 'Run'}
+                </button>
+                <button
+                    onClick={() =>
+                        setSpeed((s) => ({
+                            ...s,
+                            speed: length / (10 * 60 * 50),
+                            run: true,
+                        }))
+                    }
+                >
                     10 minute
                 </button>
-                <button onClick={() => setTimer(timer === 5 ? null : 5)}>
+                <button
+                    onClick={() =>
+                        setSpeed((s) => ({
+                            ...s,
+                            speed: length / (5 * 60 * 50),
+                            run: true,
+                        }))
+                    }
+                >
                     5 minute
                 </button>
-                <button onClick={() => setTimer(timer === 1 ? null : 1)}>
+                <button
+                    onClick={() =>
+                        setSpeed((s) => ({
+                            ...s,
+                            speed: length / (1 * 60 * 50),
+                            run: true,
+                        }))
+                    }
+                >
                     1 minute
                 </button>
                 <button
