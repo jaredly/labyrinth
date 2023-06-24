@@ -4,6 +4,7 @@ import { organizeLine } from './organizeLine';
 import { calculateSingles } from './Edit';
 import { Polar, calcLocation } from './sections';
 import { angleBetween, calcPathPartsInner } from './calcPath';
+import { useLocalStorage } from './reduceLocalStorage';
 
 export const Animate = ({
     state,
@@ -97,7 +98,7 @@ export const Animate = ({
         return node;
     }, [pathString]);
 
-    const [pos, setPos] = React.useState(50);
+    const [pos, setPos] = React.useState(0);
     const [length, setLength] = React.useState(null as null | number);
     const [timer, setTimer] = React.useState(null as null | number);
 
@@ -116,17 +117,25 @@ export const Animate = ({
         };
     }, [timer]);
 
+    const [{ scale, smooth }, setState] = useLocalStorage(
+        'animate-settings',
+        () => ({
+            scale: 8,
+            smooth: 20,
+        }),
+    );
+
     const amt = (pos / 100) * pathNode.getTotalLength();
     const ppos = pathNode.getPointAtLength(amt);
-    const pnext = pathNode.getPointAtLength(amt + 20);
+    const pnext = pathNode.getPointAtLength(amt + smooth);
     const t =
         pos >= 100 - 0.01
             ? -Math.PI / 2
             : Math.atan2(pnext.y - ppos.y, pnext.x - ppos.x);
 
-    const SCALE = 8;
+    const SCALE = scale;
 
-    const c = VW / 2;
+    // const c = VW / 2;
     // rotate(${-(t / Math.PI) * 180})
     // rotate(${-(t / Math.PI) * 180})
     return (
@@ -179,6 +188,41 @@ export const Animate = ({
                 </g>
             </svg>
             <div>
+                <div>
+                    Scale:
+                    {scale}
+                    <input
+                        type="range"
+                        min="1"
+                        max="20"
+                        step="1"
+                        value={scale}
+                        onChange={(evt) =>
+                            setState((s) => ({
+                                ...s,
+                                scale: +evt.target.value,
+                            }))
+                        }
+                    />
+                </div>
+                <div>
+                    Smooth:
+                    {smooth}
+                    <input
+                        type="range"
+                        min="1"
+                        max="20"
+                        step="1"
+                        value={smooth}
+                        onChange={(evt) =>
+                            setState((s) => ({
+                                ...s,
+                                smooth: +evt.target.value,
+                            }))
+                        }
+                    />
+                </div>
+
                 <input
                     type="range"
                     min="0"
@@ -246,6 +290,8 @@ export const addCircular = (
 
 const DASH = '1 8';
 const DASHW = 4;
+// const DCOLOR = 'white';
+const DCOLOR = '#333';
 
 function produceBorders(
     nodes: JSX.Element[],
@@ -266,7 +312,7 @@ function produceBorders(
                 strokeLinecap="round"
                 fill="none"
                 strokeDasharray={DASH}
-                stroke={'white'}
+                stroke={DCOLOR}
                 strokeWidth={DASHW}
             />,
         );
@@ -317,8 +363,8 @@ function produceBorders(
             ((i + 1) / state.sections.length) * Math.PI * 2 + Math.PI / 2;
 
         for (let x = 0; x < bounds.width - 1; x++) {
-            const k1 = `${i}:${x},${rows - 1}`;
-            const k2 = `${(i + 1) % state.sections.length}:${x},${0}`;
+            // const k1 = `${i}:${x},${rows - 1}`;
+            // const k2 = `${(i + 1) % state.sections.length}:${x},${0}`;
             const nsi = (i + 1) % state.sections.length;
 
             const p1 = calcLocation({
@@ -359,7 +405,7 @@ function produceBorders(
                     strokeLinecap="round"
                     fill="none"
                     strokeDasharray={DASH}
-                    stroke={'white'}
+                    stroke={DCOLOR}
                     strokeWidth={DASHW}
                 />,
             );
