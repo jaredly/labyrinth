@@ -3,7 +3,7 @@ import { Coord, Screen, State, calcBounds, pairKey } from './App2';
 import { organizeLine } from './organizeLine';
 import { calculateSingles } from './Edit';
 import { Polar, calcLocation } from './sections';
-import { calcPathPartsInner } from './calcPath';
+import { angleBetween, calcPathPartsInner } from './calcPath';
 
 export const Animate = ({
     state,
@@ -125,33 +125,43 @@ export const Animate = ({
             const k1 = `${i}:${x},${rows - 1}`;
             const k2 = `${(i + 1) % state.sections.length}:${x},${0}`;
             const nsi = (i + 1) % state.sections.length;
+
+            const p1 = calcLocation({
+                pos: {
+                    x: bounds.width - x + 0.5,
+                    y: rows - 0.5,
+                },
+                sectionTheta,
+                dr,
+                r0,
+                rows: state.sections[i].rows,
+                col: 0,
+                section: i,
+            });
+            const p2 = calcLocation({
+                pos: { x: bounds.width - x + 0.5, y: -0.5 },
+                sectionTheta: nsectionTheta,
+                dr,
+                r0,
+                rows: state.sections[nsi].rows,
+                col: 1,
+                section: nsi,
+            });
+
+            const ang = angleBetween(p1.t, p2.t, true);
+            if (ang > Math.PI) {
+                continue;
+            }
+
             nodes.push(
                 <path
                     key={`${i} ${x} - connector 2`}
+                    data-info={`${p1.t.toFixed(2)} ${p2.t.toFixed(2)} ${(
+                        (ang / Math.PI) *
+                        180
+                    ).toFixed(0)}`}
                     d={calcPathPartsInner(
-                        [
-                            calcLocation({
-                                pos: {
-                                    x: bounds.width - x + 0.5,
-                                    y: rows - 0.5,
-                                },
-                                sectionTheta,
-                                dr,
-                                r0,
-                                rows: state.sections[i].rows,
-                                col: 0,
-                                section: i,
-                            }),
-                            calcLocation({
-                                pos: { x: bounds.width - x + 0.5, y: -0.5 },
-                                sectionTheta: nsectionTheta,
-                                dr,
-                                r0,
-                                rows: state.sections[nsi].rows,
-                                col: 1,
-                                section: nsi,
-                            }),
-                        ],
+                        [p1, p2],
                         VW / 2,
                         VW / 2,
                         totalCols,
