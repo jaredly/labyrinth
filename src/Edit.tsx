@@ -21,6 +21,7 @@ import classical7 from '../exports/classical-7.json';
 import classical11 from '../exports/classical-11.json';
 import symmetrical7 from '../exports/symmetrical-7.json';
 
+// @ts-ignore
 const examples: { [key: string]: State } = {
     classical7,
     classical11,
@@ -54,7 +55,6 @@ export const Edit = ({
     const cref = useRef<SVGSVGElement>(null);
 
     const lines = organizeLine(state.rings, sections, singles);
-    // console.log('line', line);
     const cartesian = renderCart2(
         cref,
         state,
@@ -79,6 +79,9 @@ export const Edit = ({
         <div {...callbacks}>
             <div>
                 <button onClick={() => setScreen('animate')}>Animate</button>
+                <span style={{ marginRight: 12, marginLeft: 24 }}>
+                    Examples:
+                </span>
                 {Object.keys(examples).map((k) => (
                     <button
                         key={k}
