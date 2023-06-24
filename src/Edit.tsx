@@ -17,6 +17,16 @@ import {
     Screen,
 } from './App2';
 
+import classical7 from '../exports/classical-7.json';
+import classical11 from '../exports/classical-11.json';
+import symmetrical7 from '../exports/symmetrical-7.json';
+
+const examples: { [key: string]: State } = {
+    classical7,
+    classical11,
+    symmetrical7,
+} as const;
+
 export const Edit = ({
     state,
     dispatch,
@@ -67,7 +77,19 @@ export const Edit = ({
 
     return (
         <div {...callbacks}>
-            <button onClick={() => setScreen('animate')}>Animate</button>
+            <div>
+                <button onClick={() => setScreen('animate')}>Animate</button>
+                {Object.keys(examples).map((k) => (
+                    <button
+                        key={k}
+                        onClick={() => {
+                            dispatch({ type: 'reset', state: examples[k] });
+                        }}
+                    >
+                        {k}
+                    </button>
+                ))}
+            </div>
             <div
                 style={{
                     display: 'flex',
