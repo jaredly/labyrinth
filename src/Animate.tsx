@@ -137,8 +137,10 @@ export const Animate = ({
                     const angle = angleBetween(a1, a2, true);
                     const off = Math.abs(angle - Math.PI);
                     // TODO: Slow more at higher curve, less at lower curve
-                    if (off > Math.PI / 20) {
-                        return { ...s, pos: s.pos + s.speed / 4 };
+                    const max = Math.PI / 20;
+                    if (off > max) {
+                        const percent = 1 - (off - max) / Math.PI;
+                        return { ...s, pos: s.pos + s.speed * percent };
                     }
                 }
 
