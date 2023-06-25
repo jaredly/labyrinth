@@ -120,8 +120,11 @@ export const Animate = ({
                 if (!s.run) {
                     return s;
                 }
-                if (s.pos >= length) {
+                if (s.speed > 0 && s.pos >= length) {
                     return { ...s, run: false };
+                }
+                if (s.speed < 0 && s.pos <= 0) {
+                    return { ...s, run: false, pos: 0 };
                 }
                 if (s.pos < length - s.speed * 2) {
                     const one = pathNode.getPointAtLength(s.pos);
@@ -155,21 +158,27 @@ export const Animate = ({
         };
     }, [speed.run, length]);
 
-    const [{ scale, smooth }, setState] = useLocalStorage(
+    const [{ scale, smooth, rotate }, setState] = useLocalStorage(
         'animate-settings',
         () => ({
             scale: 8,
             smooth: 20,
+            rotate: false,
         }),
     );
 
     const amt = speed.pos;
     const ppos = pathNode.getPointAtLength(amt);
     const pnext = pathNode.getPointAtLength(amt + smooth);
-    const t =
-        speed.pos >= length - 0.01
-            ? -Math.PI / 2
-            : Math.atan2(pnext.y - ppos.y, pnext.x - ppos.x);
+    let t = !rotate
+        ? -Math.PI / 2
+        : speed.pos >= length - 0.01
+        ? -Math.PI / 2
+        : Math.atan2(pnext.y - ppos.y, pnext.x - ppos.x);
+
+    if (speed.speed < 0) {
+        t += Math.PI;
+    }
 
     const SCALE = scale;
 
@@ -193,7 +202,13 @@ export const Animate = ({
                             scale(${SCALE} ${SCALE})
                         `}
                     >
-                        <g transform={`translate(${-ppos.x} ${-ppos.y})`}>
+                        <g
+                            transform={
+                                scale > 1 || rotate
+                                    ? `translate(${-ppos.x} ${-ppos.y})`
+                                    : ''
+                            }
+                        >
                             {nodes}
                             {mode === 'dot' ? (
                                 <circle
@@ -225,12 +240,13 @@ export const Animate = ({
                                     fill="none"
                                 />
                             )}
+                            {/* <circle cx={ppos.x} cy={ppos.y} r={5} fill="#77f" />
                             <circle
                                 cx={ppos.x}
                                 cy={ppos.y}
                                 r={3}
                                 fill="#0a0a0a"
-                            />
+                            /> */}
                         </g>
                     </g>
                 </g>
@@ -238,12 +254,11 @@ export const Animate = ({
             <div>
                 <div>
                     Scale:
-                    {scale}
                     <input
                         type="range"
                         min="1"
                         max="20"
-                        step="1"
+                        step="0.1"
                         value={scale}
                         onChange={(evt) =>
                             setState((s) => ({
@@ -252,10 +267,19 @@ export const Animate = ({
                             }))
                         }
                     />
+                    {scale}
+                </div>
+                <div>
+                    <button
+                        onClick={() =>
+                            setSpeed((s) => ({ ...s, speed: -s.speed }))
+                        }
+                    >
+                        Reverse
+                    </button>
                 </div>
                 <div>
                     Smooth:
-                    {smooth}
                     <input
                         type="range"
                         min="1"
@@ -269,6 +293,7 @@ export const Animate = ({
                             }))
                         }
                     />
+                    {smooth}
                 </div>
                 <div>
                     Speed
@@ -285,60 +310,70 @@ export const Animate = ({
                             }))
                         }
                     />
-                    {speed.speed}
+                    {speed.speed.toFixed(2)}
                 </div>
 
-                <input
-                    type="range"
-                    min="0"
-                    max={length}
-                    step={1}
-                    value={speed.pos}
-                    onChange={(evt) =>
-                        setSpeed((s) => ({ ...s, pos: +evt.target.value }))
+                <div>
+                    Progress
+                    <input
+                        type="range"
+                        min="0"
+                        max={length}
+                        step={1}
+                        value={speed.pos}
+                        onChange={(evt) =>
+                            setSpeed((s) => ({ ...s, pos: +evt.target.value }))
+                        }
+                    />
+                    {speed.pos.toFixed(0)}
+                </div>
+                <button
+                    onClick={() =>
+                        setState((s) => ({ ...s, rotate: !s.rotate }))
                     }
-                />
-                <span style={{ marginRight: 8 }} />
-                {length?.toFixed(0)}
-                <span style={{ marginRight: 8 }} />
+                >
+                    {rotate ? 'Rotate' : 'Fixed'}
+                </button>
                 <button
                     onClick={() => setSpeed((s) => ({ ...s, run: !s.run }))}
                 >
                     {speed.run ? 'Stop' : 'Run'}
                 </button>
-                <button
-                    onClick={() =>
-                        setSpeed((s) => ({
-                            ...s,
-                            speed: length / (10 * 60 * 50),
-                            run: true,
-                        }))
-                    }
-                >
-                    10 minute
-                </button>
-                <button
-                    onClick={() =>
-                        setSpeed((s) => ({
-                            ...s,
-                            speed: length / (5 * 60 * 50),
-                            run: true,
-                        }))
-                    }
-                >
-                    5 minute
-                </button>
-                <button
-                    onClick={() =>
-                        setSpeed((s) => ({
-                            ...s,
-                            speed: length / (1 * 60 * 50),
-                            run: true,
-                        }))
-                    }
-                >
-                    1 minute
-                </button>
+                <div>
+                    <button
+                        onClick={() =>
+                            setSpeed((s) => ({
+                                ...s,
+                                speed: length / (10 * 60 * 50),
+                                run: true,
+                            }))
+                        }
+                    >
+                        10 minute
+                    </button>
+                    <button
+                        onClick={() =>
+                            setSpeed((s) => ({
+                                ...s,
+                                speed: length / (5 * 60 * 50),
+                                run: true,
+                            }))
+                        }
+                    >
+                        5 minute
+                    </button>
+                    <button
+                        onClick={() =>
+                            setSpeed((s) => ({
+                                ...s,
+                                speed: length / (1 * 60 * 50),
+                                run: true,
+                            }))
+                        }
+                    >
+                        1 minute
+                    </button>
+                </div>
                 <button
                     onClick={() => setMode(mode === 'line' ? 'dot' : 'line')}
                 >
