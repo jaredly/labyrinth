@@ -28,8 +28,8 @@ export const Animate = ({
         );
     }
 
-    const VW = 800;
     const vm = 5;
+    const VW = window.innerWidth - vm * 2;
 
     const R = VW / 2;
     const dr = R / (bounds.width + (state.inner ?? 1) + 1);
@@ -114,9 +114,13 @@ export const Animate = ({
     // 100 / (timer * 60 * 50)
     React.useEffect(() => {
         if (!speed.run) return;
-        // setPos(0);
-        const iid = setInterval(() => {
+
+        let start = performance.now();
+
+        const fn = (stamp: number) => {
             setSpeed((s) => {
+                const d = ((stamp - start) / 1000) * s.speed;
+                start = stamp;
                 if (!s.run) {
                     return s;
                 }
@@ -126,12 +130,10 @@ export const Animate = ({
                 if (s.speed < 0 && s.pos <= 0) {
                     return { ...s, run: false, pos: 0 };
                 }
-                if (s.pos < length - s.speed * 2) {
+                if (s.pos < length - d * 2) {
                     const one = pathNode.getPointAtLength(s.pos);
-                    const two = pathNode.getPointAtLength(s.pos + s.speed);
-                    const three = pathNode.getPointAtLength(
-                        s.pos + s.speed * 2,
-                    );
+                    const two = pathNode.getPointAtLength(s.pos + d);
+                    const three = pathNode.getPointAtLength(s.pos + d * 2);
                     const a1 = Math.atan2(one.y - two.y, one.x - two.x);
                     const a2 = Math.atan2(three.y - two.y, three.x - two.x);
                     const angle = angleBetween(a1, a2, true);
@@ -140,7 +142,7 @@ export const Animate = ({
                     const max = Math.PI / 20;
                     if (off > max) {
                         const percent = 1 - (off - max) / Math.PI;
-                        return { ...s, pos: s.pos + s.speed * percent };
+                        return { ...s, pos: s.pos + d * percent };
                     }
                 }
 
@@ -148,15 +150,22 @@ export const Animate = ({
                     ? s
                     : s.pos >= length
                     ? { ...s, run: false }
-                    : { ...s, pos: s.pos + s.speed };
+                    : { ...s, pos: s.pos + d };
             });
-            // setPos((p) => p >= 1 ? {...p} : p + speedRef.current.speed);
-        }, 20);
+            id = requestAnimationFrame(fn);
+        };
+
+        let id = requestAnimationFrame(fn);
+
+        // const iid = setInterval(() => {
+        //     // setPos((p) => p >= 1 ? {...p} : p + speedRef.current.speed);
+        // }, 20);
         // const to = setTimeout(() => {
         //     setRun(false)
         // }, timer * 60 * 1000);
         return () => {
-            clearInterval(iid);
+            cancelAnimationFrame(id);
+            // clearTimeout(id);
         };
     }, [speed.run, length]);
 
@@ -195,7 +204,7 @@ export const Animate = ({
             <svg
                 width={VW + vm * 2}
                 height={VW + vm * 2}
-                style={{ marginTop: 50 - vm, backgroundColor: '#0a0a0a' }}
+                style={{ backgroundColor: '#0a0a0a' }}
             >
                 <g transform={`translate(${VW / 2}, ${VW / 2})`}>
                     <g
@@ -216,7 +225,7 @@ export const Animate = ({
                                 <circle
                                     cx={ppos.x}
                                     cy={ppos.y}
-                                    r={8}
+                                    r={VW / 80}
                                     fill="#77f"
                                 />
                             ) : (
@@ -238,7 +247,7 @@ export const Animate = ({
                                     }
                                     stroke="#77f"
                                     strokeLinecap="round"
-                                    strokeWidth={10}
+                                    strokeWidth={VW / 80}
                                     fill="none"
                                 />
                             )}
@@ -301,9 +310,9 @@ export const Animate = ({
                     Speed
                     <input
                         type="range"
-                        min="0"
-                        max={20}
-                        step={0.1}
+                        min="10"
+                        max={400}
+                        step={1}
                         value={speed.speed}
                         onChange={(evt) =>
                             setSpeed((s) => ({
@@ -346,7 +355,7 @@ export const Animate = ({
                         onClick={() =>
                             setSpeed((s) => ({
                                 ...s,
-                                speed: length / (10 * 60 * 50),
+                                speed: length / (10 * 60),
                                 run: true,
                             }))
                         }
@@ -357,7 +366,7 @@ export const Animate = ({
                         onClick={() =>
                             setSpeed((s) => ({
                                 ...s,
-                                speed: length / (5 * 60 * 50),
+                                speed: length / (5 * 60),
                                 run: true,
                             }))
                         }
@@ -368,7 +377,7 @@ export const Animate = ({
                         onClick={() =>
                             setSpeed((s) => ({
                                 ...s,
-                                speed: length / (1 * 60 * 50),
+                                speed: length / (1 * 60),
                                 run: true,
                             }))
                         }
@@ -421,8 +430,8 @@ export const addCircular = (
     ];
 };
 
-const DASH = '1 8';
-const DASHW = 4;
+const DASHW = window.innerWidth / 400;
+const DASH = `${DASHW / 4} ${DASHW * 2}`;
 // const DCOLOR = 'white';
 const DCOLOR = '#333';
 

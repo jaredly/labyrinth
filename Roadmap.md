@@ -1,6 +1,18 @@
 
 zoooomin
 
+# So, for like mobile native
+what's the best way to do this
+hrm
+lol ok
+so
+anyway maybe I want to target golang?
+and then target like [gio](https://gioui.org/) maybe?
+and make a react-like whatsit
+
+idk this is a little elaborate
+
+
 # Ok friends, now that ... I can generate things to cnc route
 how about some good old
 animations
@@ -9,7 +21,7 @@ perhaps
 
 - [x] basic animate!
 - [ ] in & out please
-- [ ] better "stop" mechanism
+- [x] better "stop" mechanism
 - [x] have it be a separate mode probably?
 - [ ] umm mobile friendly?
 - [x] have a "dot" mode, where you just follow the dot
