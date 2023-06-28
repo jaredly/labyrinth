@@ -17,15 +17,17 @@ import {
     Screen,
 } from './App2';
 
+import classical5 from '../exports/classical-5.json';
 import classical7 from '../exports/classical-7.json';
 import classical11 from '../exports/classical-11.json';
 import symmetrical7 from '../exports/symmetrical-7.json';
 
 // @ts-ignore
 const examples: { [key: string]: State } = {
+    classical5,
     classical7,
-    classical11,
     symmetrical7,
+    classical11,
 } as const;
 
 export const Edit = ({

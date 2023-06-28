@@ -29,7 +29,7 @@ export const Animate = ({
     }
 
     const vm = 5;
-    const VW = window.innerWidth - vm * 2;
+    const VW = Math.min(window.innerWidth, window.innerHeight, 800) - vm * 2;
 
     const R = VW / 2;
     const dr = R / (bounds.width + (state.inner ?? 1) + 1);
