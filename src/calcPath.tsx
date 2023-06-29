@@ -176,21 +176,27 @@ export const calcPathPartsInner = (
                         rounded,
                     );
                     ldest = { x: p2.rx + cx, y: p2.ry + cy };
-                    // const r =
-                    //     pos.r + (rounded.dr / 2) * (prev.r > pos.r ? 1 : -1);
-                    // let ncw = isClockwise(next, pos, cols);
-                    // if (next.y < pos.y) {
-                    //     ncw = !ncw;
-                    // }
-                    // let t = pos.t + (rounded * (ncw ? 1 : -1)) / pos.r;
+                    const CIRCLE_ROUND = false;
+                    if (CIRCLE_ROUND) {
+                        const r =
+                            pos.r +
+                            (rounded.dr / 2) * (prev.r > pos.r ? 1 : -1);
+                        let ncw = isClockwise(next, pos, cols);
+                        if (next.y < pos.y) {
+                            ncw = !ncw;
+                        }
+                        let t = pos.t + (rounded.dr * (ncw ? 1 : -1)) / pos.r;
+                        return (
+                            `${prefix}L${p1.rx + cx} ${p1.ry + cy}` +
+                            `A ${rounded} ${rounded} 0 0 ${ncw ? '0' : '1'} ${
+                                Math.cos(t) * pos.r + cx
+                            } ${Math.sin(t) * pos.r + cy}`
+                        );
+                    }
                     return (
                         `${prefix}L${p1.rx + cx} ${p1.ry + cy}` +
                         `Q${x} ${y} ${p2.rx + cx} ${p2.ry + cy}`
                     );
-                    //  +
-                    // `A ${rounded} ${rounded} 0 0 ${ncw ? '0' : '1'} ${
-                    //     Math.cos(t) * pos.r + cx
-                    // } ${Math.sin(t) * pos.r + cy}`
                 }
             }
             ldest = { x, y };
@@ -234,6 +240,11 @@ export const calcPathPartsInner = (
             y = p1.ry + cy;
         } else {
             ldest = { x, y };
+        }
+
+        if (pos.section !== prev.section && largeArcFlag) {
+            // return `M${x} ${y}` + extra;
+            return '';
         }
 
         return (
