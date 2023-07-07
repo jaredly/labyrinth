@@ -62,6 +62,7 @@ export const Animate = ({
     });
 
     const nodes: JSX.Element[] = [];
+    const [rounded, setRounded] = React.useState(true);
 
     produceBorders(
         nodes,
@@ -77,11 +78,19 @@ export const Animate = ({
 
     const pathString = React.useMemo(
         () =>
-            calcPathPartsInner(polars, 0, 0, totalCols, {
-                dr,
-                r0,
-                sections: state.sections,
-            }).join(' '),
+            calcPathPartsInner(
+                polars,
+                0,
+                0,
+                totalCols,
+                rounded
+                    ? {
+                          dr,
+                          r0,
+                          sections: state.sections,
+                      }
+                    : undefined,
+            ).join(' '),
         [state.sections, dr, r0, polars, totalCols],
     );
     const [mode, setMode] = React.useState('line' as 'line' | 'dot');
@@ -350,6 +359,9 @@ export const Animate = ({
                 >
                     {speed.run ? 'Stop' : 'Run'}
                 </button>
+                <button onClick={() => setRounded(!rounded)}>
+                    {rounded ? 'Rounded' : 'Unrounded'}
+                </button>
                 <div>
                     <button
                         onClick={() =>
@@ -383,6 +395,17 @@ export const Animate = ({
                         }
                     >
                         1 minute
+                    </button>
+                    <button
+                        onClick={() =>
+                            setSpeed((s) => ({
+                                ...s,
+                                speed: length / 30,
+                                run: true,
+                            }))
+                        }
+                    >
+                        30 secs
                     </button>
                 </div>
                 <button

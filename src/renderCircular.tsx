@@ -39,6 +39,8 @@ export function renderCircular(
     });
     const totalCols = col;
 
+    const [rounded, setRounded] = useState(false);
+
     const circular: Grouped = { slop: [], back: [], mid: [], front: [] };
     const addCircular = (
         section: number,
@@ -211,19 +213,21 @@ export function renderCircular(
                     VW / 2,
                     VW / 2,
                     totalCols,
-                    {
-                        dr,
-                        r0,
-                        sections,
-                    },
+                    rounded
+                        ? {
+                              dr,
+                              r0,
+                              sections,
+                          }
+                        : undefined,
                 ).join(' ');
                 svgpaths.push(d);
                 circular.front.push(
                     <path
                         key={`themaindeal` + i}
                         d={d}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                        strokeLinecap={rounded ? 'round' : 'square'}
+                        strokeLinejoin={rounded ? 'round' : 'miter'}
                         fill="none"
                         stroke={'blue'}
                         strokeWidth={dr - 2}
@@ -333,7 +337,7 @@ export function renderCircular(
 
     const [length, setLength] = useState(null as null | number);
 
-    const p = svgpaths.length ? new Path2D(svgpaths[0]) : null;
+    // const p = svgpaths.length ? new Path2D(svgpaths[0]) : null;
 
     const [timer, setTimer] = useState(null as null | number);
 
@@ -393,29 +397,54 @@ export function renderCircular(
                                 : undefined
                         }
                         stroke="#77f"
-                        strokeLinecap="round"
+                        strokeLinecap={rounded ? 'round' : 'square'}
+                        strokeLinejoin={rounded ? 'round' : 'miter'}
                         strokeWidth={mode === 'dot' ? 20 : 10}
                         fill="none"
                     />
                 </g>
             </svg>
-            <div>
-                <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={pos}
-                    onChange={(evt) => setPos(+evt.target.value)}
-                />
-                {length}
+            <div
+                style={{
+                    flexDirection: 'row',
+                    display: 'flex',
+                    alignItems: 'center',
+                }}
+            >
+                <div>
+                    <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={pos}
+                        onChange={(evt) => setPos(+evt.target.value)}
+                    />
+                    {length ? (
+                        <div>
+                            Length: {length?.toFixed(0)}
+                            <br />
+                            Radius: {VW / 2} DR: {dr.toFixed(1)}
+                            <br />
+                            Length/DR: {(length / dr).toFixed(1)}
+                        </div>
+                    ) : null}
+                </div>
                 <button onClick={() => setTimer(10)}>10 minute</button>
                 <button onClick={() => setTimer(5)}>5 minute</button>
                 <button onClick={() => setTimer(1)}>1 minute</button>
+                <button onClick={() => setTimer(0.5)}>0.5 minute</button>
                 <button
                     onClick={() => setMode(mode === 'line' ? 'dot' : 'line')}
                 >
                     Line / Dot
+                </button>
+                <button
+                    onClick={() => {
+                        setRounded(!rounded);
+                    }}
+                >
+                    {rounded ? 'Rounded' : 'Unrounded'}
                 </button>
             </div>
         </div>
