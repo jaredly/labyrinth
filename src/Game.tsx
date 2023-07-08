@@ -21,6 +21,7 @@ export type State = {
     speed: number;
     lines: Line[];
     mod: number;
+    float: boolean;
 };
 
 const TEST_STRAIGHT = false;
@@ -81,6 +82,10 @@ const makeLines = (state: AppState): Line[] => {
                     type: 'straight',
                     p1: { x: p1.rx, y: p1.ry },
                     p2: { x: p2.rx, y: p2.ry },
+                    // ann: `${p2.ry} : ${p1.ry}`,
+                    // ann: `${(p2.ry - p1.ry).toFixed(0)} : ${(
+                    //     p2.rx - p1.rx
+                    // ).toFixed(0)}`,
                 };
             }
 
@@ -105,6 +110,7 @@ const initialState: (appstate: AppState) => State = (appstate): State => ({
     heading: 0,
     speed: tweak.limit,
     size: 10,
+    float: false,
     mod: 1,
     lines: makeLines(appstate) ?? [
         { type: 'arc', center: { x: 0, y: 0 }, t1: 0, t2: Math.PI, r: 200 },
@@ -124,7 +130,8 @@ export type Action =
     | { type: 'tick'; ts: number; turn?: 'left' | 'right' }
     | {
           type: 'stop/start';
-      };
+      }
+    | { type: 'float' };
 
 const limit = (n: number, min: number, max: number) =>
     Math.max(min, Math.min(max, n));
@@ -193,6 +200,9 @@ export const pickHit = (one: void | Hit, two: void | Hit) => {
     return one ?? two;
 };
 
+const epsilon = 0.00001;
+const closeEnough = (one: number, two: number) => Math.abs(one - two) < epsilon;
+
 export const distanceTo = (
     line: Line,
     pos: Coord,
@@ -242,7 +252,10 @@ export const distanceTo = (
 
             const endPoint = pickHit(dpos(p1, pos, size), dpos(p2, pos, size));
 
-            if (p1.x === p2.x) {
+            if (closeEnough(p1.x, p2.x)) {
+                if (pos.y < y0 || pos.y > y1) {
+                    return endPoint;
+                }
                 // straight up & down
                 return pickHit(endPoint, {
                     overlap: size - Math.abs(p1.x - pos.x),
@@ -250,7 +263,7 @@ export const distanceTo = (
                 });
             }
 
-            if (p1.y === p2.y) {
+            if (closeEnough(p1.y, p2.y)) {
                 if (pos.x < x0 || pos.x > x1) {
                     return endPoint;
                 }
@@ -311,6 +324,9 @@ const add = (t1: number, m1: number, t2: number, m2: number) => {
 };
 
 const bounce = (state: State): State => {
+    if (state.float) {
+        return state;
+    }
     let closest = null as null | [Hit, Line];
     for (let line of state.lines) {
         const dist = distanceTo(line, state.pos, state.size);
@@ -337,12 +353,14 @@ const bounce = (state: State): State => {
     return state;
 };
 
-const reducer = (state: State, action: Action) => {
+const reducer = (state: State, action: Action): State => {
     switch (action.type) {
         case 'tick':
             return tick(state, action);
         case 'stop/start':
             return { ...state, speed: state.speed ? 0 : 0.5 };
+        case 'float':
+            return { ...state, float: !state.float };
     }
 };
 
@@ -387,6 +405,9 @@ export const Game = ({ appstate }: { appstate: AppState }) => {
             if (evt.key === 'ArrowRight') {
                 key.current = 'right';
             }
+            if (evt.key === 'f') {
+                dispatch({ type: 'float' });
+            }
             if (evt.key === ' ') {
                 dispatch({ type: 'stop/start' });
             }
@@ -420,7 +441,7 @@ export const Game = ({ appstate }: { appstate: AppState }) => {
                 {state.lines.map((line, i) => (
                     <path
                         key={i}
-                        stroke="red"
+                        stroke="#333"
                         strokeWidth={3}
                         fill="none"
                         d={lineToPath(line)}
