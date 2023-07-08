@@ -23,8 +23,22 @@ export type State = {
     mod: number;
 };
 
+const TEST_STRAIGHT = false;
+
+const tweak = {
+    slow: 0.98,
+    fast: 1.07,
+    // slow: 0.98,
+    // fast: 1.07,
+    turn: 0.03,
+    min: 0.7,
+    // min: 0.1,
+    limit: 1,
+    // limit: 0.5,
+};
+
 const makeLines = (state: AppState): Line[] => {
-    if (1 > 0) {
+    if (TEST_STRAIGHT) {
         const lines: Line[] = [];
         for (let i = 0; i < 10; i++) {
             const t1 = (Math.PI / 5) * i;
@@ -63,16 +77,6 @@ const makeLines = (state: AppState): Line[] => {
         .map(([p1, p2]): Line => {
             // Radial Line
             if (p1.y === p2.y) {
-                // if (p1.rx !== p2.rx) {
-                //     return;
-                // }
-                // if (p1.ry < 0) {
-                //     return {
-                //         type: 'straight',
-                //         p2: { x: p1.rx, y: p1.ry },
-                //         p1: { x: p2.rx, y: p2.ry },
-                //     };
-                // }
                 return {
                     type: 'straight',
                     p1: { x: p1.rx, y: p1.ry },
@@ -82,13 +86,13 @@ const makeLines = (state: AppState): Line[] => {
 
             const cw = !isClockwise(p1, p2, totalCols);
 
-            // return {
-            //     type: 'arc',
-            //     center: { x: 0, y: 0 },
-            //     r: p1.r,
-            //     t1: cw ? p1.t : p2.t,
-            //     t2: cw ? p2.t : p1.t,
-            // };
+            return {
+                type: 'arc',
+                center: { x: 0, y: 0 },
+                r: p1.r,
+                t1: cw ? p1.t : p2.t,
+                t2: cw ? p2.t : p1.t,
+            };
         })
         .filter(Boolean);
     console.log(lines);
@@ -99,7 +103,7 @@ const initialState: (appstate: AppState) => State = (appstate): State => ({
     ts: Date.now(),
     pos: { x: 0, y: 0 },
     heading: 0,
-    speed: 0.5,
+    speed: tweak.limit,
     size: 10,
     mod: 1,
     lines: makeLines(appstate) ?? [
@@ -127,17 +131,6 @@ const limit = (n: number, min: number, max: number) =>
 
 const loop = (n: number, min: number, max: number) =>
     n < min ? max : n > max ? min : n;
-
-const tweak = {
-    slow: 0.98,
-    fast: 1.07,
-    // slow: 0.98,
-    // fast: 1.07,
-    turn: 0.03,
-    min: 0.7,
-    // min: 0.1,
-    limit: 0.5,
-};
 
 export const tick = (
     state: State,
@@ -257,6 +250,20 @@ export const distanceTo = (
                 });
             }
 
+            if (p1.y === p2.y) {
+                if (pos.x < x0 || pos.x > x1) {
+                    return endPoint;
+                }
+                const d = Math.abs(p1.y - pos.y);
+                if (d > size) {
+                    return endPoint;
+                }
+                return pickHit(endPoint, {
+                    overlap: size - d,
+                    direction: pos.y < p1.y ? -Math.PI / 2 : Math.PI / 2,
+                });
+            }
+
             const t = angleTo(p1, p2) + Math.PI / 2;
             const m = (p2.y - p1.y) / (p2.x - p1.x);
             // p2.y = m * p2.x + b
@@ -268,8 +275,13 @@ export const distanceTo = (
             // m * x - m2 * x = b2 - b
             // x (m - m2) = b2 - b
             // x = (b2 - b) / (m - m2)
+
             const x = (b2 - b) / (m - m2);
             const y = m * x + b;
+
+            if (x < x0 || x > x1 || y < y0 || y > y1) {
+                return endPoint;
+            }
 
             const dt = dist(pos, { x, y });
 

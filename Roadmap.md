@@ -1,8 +1,9 @@
 
 ## Game
 
-- [ ] load up the actual labyrinth!
+- [x] load up the actual labyrinth!
 
+- [ ] handle all hits
 
 #
 
