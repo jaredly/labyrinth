@@ -4,6 +4,7 @@ import { GridPoint } from './renderCart2';
 import { reduce } from './reduce';
 import { Edit } from './Edit';
 import { Animate } from './Animate';
+import { Game } from './Game';
 export type Coord = { x: number; y: number };
 
 export type Section = {
@@ -126,6 +127,10 @@ export const App2 = () => {
         'labyrinth-screen',
         () => 'edit',
     );
+
+    if (1 > 0) {
+        return <Game />;
+    }
 
     if (screen === 'edit') {
         return <Edit state={state} dispatch={dispatch} setScreen={setScreen} />;
