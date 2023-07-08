@@ -305,7 +305,11 @@ export const angleBetween = (
     return res;
 };
 
-function isClockwise(pos: SectionMap[''], prev: SectionMap[''], cols: number) {
+export function isClockwise(
+    pos: SectionMap[''],
+    prev: SectionMap[''],
+    cols: number,
+) {
     return pos.col === (prev.col + 1) % cols;
 }
 

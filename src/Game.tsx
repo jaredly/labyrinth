@@ -1,11 +1,16 @@
 import * as React from 'react';
 import { useReducer, useState } from 'react';
-import { angleBetween } from './calcPath';
+import { angleBetween, isClockwise } from './calcPath';
+import { State as AppState, calcBounds } from './App2';
+import { organizeLine } from './organizeLine';
+import { calculateSingles } from './Edit';
+import { calcLocation } from './sections';
+import { produceBorders_ } from './Animate';
 
 export type Coord = { x: number; y: number };
 
 export type Line =
-    | { type: 'straight'; p1: Coord; p2: Coord }
+    | { type: 'straight'; p1: Coord; p2: Coord; ann?: string }
     | { type: 'arc'; center: Coord; t1: number; t2: number; r: number };
 
 export type State = {
@@ -18,14 +23,86 @@ export type State = {
     mod: number;
 };
 
-const initialState: () => State = (): State => ({
+const makeLines = (state: AppState): Line[] => {
+    if (1 > 0) {
+        const lines: Line[] = [];
+        for (let i = 0; i < 10; i++) {
+            const t1 = (Math.PI / 5) * i;
+            const t2 = (Math.PI / 5) * (i + 1);
+            const p1 = push({ x: 0, y: 0 }, t1, 100);
+            const p2 = push({ x: 0, y: 0 }, t2, 100);
+            lines.push({
+                type: 'straight',
+                p1,
+                p2,
+                ann: `${(p2.y - p1.y).toFixed(0)} : ${(p2.x - p1.x).toFixed(
+                    0,
+                )}`,
+            });
+        }
+        return lines;
+    }
+    const bounds = calcBounds(state);
+
+    const vm = 5;
+    const VW = Math.min(window.innerWidth, window.innerHeight, 800) - vm * 2;
+
+    const R = VW / 2;
+    const dr = R / (bounds.width + (state.inner ?? 1) + 1);
+    const r0 = -1;
+
+    const sectionCols: number[] = [];
+    let col = 0;
+    state.sections.forEach(({ pairs, rows }, i) => {
+        sectionCols.push(col);
+        col += rows;
+    });
+    const totalCols = col;
+
+    const lines = produceBorders_(state, col, sectionCols, bounds, dr, r0)
+        .map(([p1, p2]): Line => {
+            // Radial Line
+            if (p1.y === p2.y) {
+                // if (p1.rx !== p2.rx) {
+                //     return;
+                // }
+                // if (p1.ry < 0) {
+                //     return {
+                //         type: 'straight',
+                //         p2: { x: p1.rx, y: p1.ry },
+                //         p1: { x: p2.rx, y: p2.ry },
+                //     };
+                // }
+                return {
+                    type: 'straight',
+                    p1: { x: p1.rx, y: p1.ry },
+                    p2: { x: p2.rx, y: p2.ry },
+                };
+            }
+
+            const cw = !isClockwise(p1, p2, totalCols);
+
+            // return {
+            //     type: 'arc',
+            //     center: { x: 0, y: 0 },
+            //     r: p1.r,
+            //     t1: cw ? p1.t : p2.t,
+            //     t2: cw ? p2.t : p1.t,
+            // };
+        })
+        .filter(Boolean);
+    console.log(lines);
+    return lines;
+};
+
+const initialState: (appstate: AppState) => State = (appstate): State => ({
     ts: Date.now(),
     pos: { x: 0, y: 0 },
     heading: 0,
     speed: 0.5,
     size: 10,
     mod: 1,
-    lines: [
+    lines: makeLines(appstate) ?? [
         { type: 'arc', center: { x: 0, y: 0 }, t1: 0, t2: Math.PI, r: 200 },
         { type: 'straight', p1: { x: 20, y: -50 }, p2: { x: 20, y: -150 } },
         { type: 'straight', p1: { x: 50, y: -50 }, p2: { x: 100, y: -150 } },
@@ -153,10 +230,14 @@ export const distanceTo = (
             );
         }
         case 'straight': {
-            const x0 = Math.min(line.p1.x, line.p2.x);
-            const x1 = Math.max(line.p1.x, line.p2.x);
-            const y0 = Math.min(line.p1.y, line.p2.y);
-            const y1 = Math.max(line.p1.y, line.p2.y);
+            let { p1, p2 } = line;
+            if (p1.y < p2.y) {
+                [p1, p2] = [p2, p1];
+            }
+            const x0 = Math.min(p1.x, p2.x);
+            const x1 = Math.max(p1.x, p2.x);
+            const y0 = Math.min(p1.y, p2.y);
+            const y1 = Math.max(p1.y, p2.y);
             const within =
                 pos.x >= x0 - size &&
                 pos.x <= x1 + size &&
@@ -166,23 +247,20 @@ export const distanceTo = (
                 return;
             }
 
-            const endPoint = pickHit(
-                dpos(line.p1, pos, size),
-                dpos(line.p2, pos, size),
-            );
+            const endPoint = pickHit(dpos(p1, pos, size), dpos(p2, pos, size));
 
-            if (line.p1.x === line.p2.x) {
+            if (p1.x === p2.x) {
                 // straight up & down
                 return pickHit(endPoint, {
-                    overlap: size - Math.abs(line.p1.x - pos.x),
-                    direction: pos.x < line.p1.x ? Math.PI : 0, //Math.PI,
+                    overlap: size - Math.abs(p1.x - pos.x),
+                    direction: pos.x < p1.x ? Math.PI : 0, //Math.PI,
                 });
             }
 
-            const t = angleTo(line.p1, line.p2) + Math.PI / 2;
-            const m = (line.p2.y - line.p1.y) / (line.p2.x - line.p1.x);
-            // line.p2.y = m * line.p2.x + b
-            const b = line.p2.y - m * line.p2.x;
+            const t = angleTo(p1, p2) + Math.PI / 2;
+            const m = (p2.y - p1.y) / (p2.x - p1.x);
+            // p2.y = m * p2.x + b
+            const b = p2.y - m * p2.x;
             const m2 = -1 / m;
             const b2 = pos.y - m2 * pos.x;
 
@@ -240,7 +318,8 @@ const bounce = (state: State): State => {
         };
         // Slide along! gotta
         state.pos = push(state.pos, closest[0].direction, closest[0].overlap);
-        state.speed = tweak.limit;
+        state.speed = Math.min(tweak.limit, state.speed * 1.1);
+        // state.speed = tweak.limit;
         // console.log(closest);
     }
     return state;
@@ -277,8 +356,8 @@ export const lineToPath = (line: State['lines'][0]) => {
     }
 };
 
-export const Game = () => {
-    const [state, dispatch] = useReducer(reducer, undefined, initialState);
+export const Game = ({ appstate }: { appstate: AppState }) => {
+    const [state, dispatch] = useReducer(reducer, appstate, initialState);
 
     const key = React.useRef(undefined as undefined | 'left' | 'right');
 
@@ -335,6 +414,18 @@ export const Game = () => {
                         d={lineToPath(line)}
                     />
                 ))}
+                {state.lines.map((line, i) =>
+                    line.type === 'straight' && line.ann ? (
+                        <text
+                            key={i}
+                            x={(line.p1.x + line.p2.x) / 2}
+                            y={(line.p1.y + line.p2.y) / 2}
+                            fill="white"
+                        >
+                            {line.ann}
+                        </text>
+                    ) : null,
+                )}
                 <circle
                     cx={state.pos.x}
                     cy={state.pos.y}

@@ -1,7 +1,14 @@
 
-zoooomin
+## Game
 
-ERRORRR the middle ring isn't wokring, the "connector" dealios that are back-wrong
+- [ ] load up the actual labyrinth!
+
+
+#
+
+- [x] zoooomin
+
+- [x] ERRORRR the middle ring isn't wokring, the "connector" dealios that are back-wrong
 
 # So, for like mobile native
 what's the best way to do this

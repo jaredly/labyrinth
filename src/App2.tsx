@@ -129,7 +129,7 @@ export const App2 = () => {
     );
 
     if (1 > 0) {
-        return <Game />;
+        return <Game appstate={state} />;
     }
 
     if (screen === 'edit') {

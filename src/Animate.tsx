@@ -427,7 +427,7 @@ export const addCircular = (
     p1: Coord,
     p2: Coord,
     col: number,
-) => {
+): [Polar, Polar] => {
     const sectionTheta =
         (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
 
@@ -469,19 +469,32 @@ function produceBorders(
     dr: number,
     r0: number,
 ) {
-    function addPolar(polar: Polar[], key: string) {
-        nodes.push(
-            <path
-                key={key}
-                d={calcPathPartsInner(polar, 0, 0, totalCols).join(' ')}
-                strokeLinecap="round"
-                fill="none"
-                strokeDasharray={DASH}
-                stroke={DCOLOR}
-                strokeWidth={DASHW}
-            />,
-        );
-    }
+    produceBorders_(state, col, sectionCols, bounds, dr, r0).forEach(
+        (polar, i) => {
+            nodes.push(
+                <path
+                    key={i}
+                    d={calcPathPartsInner(polar, 0, 0, totalCols).join(' ')}
+                    strokeLinecap="round"
+                    fill="none"
+                    strokeDasharray={DASH}
+                    stroke={DCOLOR}
+                    strokeWidth={DASHW}
+                />,
+            );
+        },
+    );
+}
+
+export function produceBorders_(
+    state: State,
+    col: number,
+    sectionCols: number[],
+    bounds: { vwidth: number; width: number; mx: number; rowTotal: number },
+    dr: number,
+    r0: number,
+) {
+    const paths: [Polar, Polar][] = [];
 
     state.sections.forEach(({ pairs, rows }, i) => {
         col = sectionCols[i];
@@ -489,7 +502,7 @@ function produceBorders(
             for (let y = 0; y < rows; y++) {
                 const p1 = pairKey({ x, y }, { x: x - 1, y });
                 if (!pairs[p1]) {
-                    addPolar(
+                    paths.push(
                         addCircular(
                             dr,
                             r0,
@@ -500,12 +513,11 @@ function produceBorders(
                             { x: x - 0.5, y: y + 0.5 },
                             col,
                         ),
-                        p1 + `- ${x} ${y} ${i}`,
                     );
                 }
                 const p2 = pairKey({ x, y }, { x, y: y + 1 });
                 if (x < bounds.width - 2 && y < rows - 1 && !pairs[p2]) {
-                    addPolar(
+                    paths.push(
                         addCircular(
                             dr,
                             r0,
@@ -516,7 +528,6 @@ function produceBorders(
                             { x: x + 0.5, y: y + 0.5 },
                             col,
                         ),
-                        p2 + `- ${x} ${y} ${i}`,
                     );
                 }
             }
@@ -559,21 +570,9 @@ function produceBorders(
                 continue;
             }
 
-            nodes.push(
-                <path
-                    key={`${i} ${x} - connector 2`}
-                    data-info={`${p1.t.toFixed(2)} ${p2.t.toFixed(2)} ${(
-                        (ang / Math.PI) *
-                        180
-                    ).toFixed(0)}`}
-                    d={calcPathPartsInner([p1, p2], 0, 0, totalCols).join(' ')}
-                    strokeLinecap="round"
-                    fill="none"
-                    strokeDasharray={DASH}
-                    stroke={DCOLOR}
-                    strokeWidth={DASHW}
-                />,
-            );
+            paths.push([p1, p2]);
         }
     });
+
+    return paths;
 }
