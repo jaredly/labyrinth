@@ -405,8 +405,10 @@ export const Game = ({ appstate }: { appstate: AppState }) => {
             if (evt.key === 'ArrowRight') {
                 key.current = 'right';
             }
-            if (evt.key === 'f') {
-                dispatch({ type: 'float' });
+            if (process.env.NODE_ENV === 'development') {
+                if (evt.key === 'f') {
+                    dispatch({ type: 'float' });
+                }
             }
             if (evt.key === ' ') {
                 dispatch({ type: 'stop/start' });
