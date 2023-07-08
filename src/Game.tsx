@@ -27,6 +27,8 @@ const initialState: () => State = (): State => ({
     mod: 1,
     lines: [
         { type: 'arc', center: { x: 0, y: 0 }, t1: 0, t2: Math.PI, r: 200 },
+        { type: 'straight', p1: { x: 0, y: -50 }, p2: { x: 0, y: -150 } },
+        { type: 'straight', p1: { x: 50, y: -50 }, p2: { x: 100, y: -150 } },
         {
             type: 'arc',
             center: { x: 0, y: 0 },
@@ -130,7 +132,72 @@ export const distanceTo = (
                 ),
             );
         }
+        case 'straight': {
+            const x0 = Math.min(line.p1.x, line.p2.x);
+            const x1 = Math.max(line.p1.x, line.p2.x);
+            const y0 = Math.min(line.p1.y, line.p2.y);
+            const y1 = Math.max(line.p1.y, line.p2.y);
+            const within =
+                pos.x >= x0 - size &&
+                pos.x <= x1 + size &&
+                pos.y >= y0 - size &&
+                pos.y <= y1 + size;
+            if (!within) {
+                return;
+            }
+
+            const endPoint = pickHit(
+                dpos(line.p1, pos, size),
+                dpos(line.p2, pos, size),
+            );
+
+            if (line.p1.x === line.p2.x) {
+                // straight up & down
+                return pickHit(endPoint, {
+                    overlap: size - Math.abs(line.p1.x - pos.x),
+                    direction: pos.x < line.p1.x ? Math.PI : 0, //Math.PI,
+                });
+            }
+
+            const t = angleTo(line.p1, line.p2) + Math.PI / 2;
+            const m = (line.p2.y - line.p1.y) / (line.p2.x - line.p1.x);
+            // line.p2.y = m * line.p2.x + b
+            const b = line.p2.y - m * line.p2.x;
+            const m2 = -1 / m;
+            const b2 = pos.y - m2 * pos.x;
+
+            // m * x + b = m2 * x + b2
+            // m * x - m2 * x = b2 - b
+            // x (m - m2) = b2 - b
+            // x = (b2 - b) / (m - m2)
+            const x = (b2 - b) / (m - m2);
+            const y = m * x + b;
+
+            const dt = dist(pos, { x, y });
+
+            return pickHit(
+                endPoint,
+                dt <= size
+                    ? {
+                          overlap: size - dt,
+                          direction: t + (pos.x < x ? Math.PI : 0),
+                      }
+                    : undefined,
+            );
+        }
     }
+};
+
+const add = (t1: number, m1: number, t2: number, m2: number) => {
+    const x1 = Math.cos(t1) * m1;
+    const y1 = Math.sin(t1) * m1;
+    const x2 = Math.cos(t2) * m2;
+    const y2 = Math.sin(t2) * m2;
+    const pos = { x: x1 + x2, y: y1 + y2 };
+    return {
+        heading: angleTo({ x: 0, y: 0 }, pos),
+        speed: dist({ x: 0, y: 0 }, pos),
+    };
 };
 
 const bounce = (state: State): State => {
@@ -140,6 +207,18 @@ const bounce = (state: State): State => {
         if (dist != null && (!closest || closest[0].overlap < dist.overlap)) {
             closest = [dist, line];
         }
+    }
+    if (closest) {
+        state = {
+            ...state,
+            ...add(
+                state.heading,
+                state.speed,
+                closest[0].direction,
+                closest[0].overlap / 30,
+            ),
+        };
+        // console.log(closest);
     }
     return state;
 };
