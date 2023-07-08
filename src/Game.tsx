@@ -39,7 +39,11 @@ const initialState: () => State = (): State => ({
     ],
 });
 
-export type Action = { type: 'tick'; ts: number; turn?: 'left' | 'right' };
+export type Action =
+    | { type: 'tick'; ts: number; turn?: 'left' | 'right' }
+    | {
+          type: 'stop/start';
+      };
 
 const limit = (n: number, min: number, max: number) =>
     Math.max(min, Math.min(max, n));
@@ -47,14 +51,30 @@ const limit = (n: number, min: number, max: number) =>
 const loop = (n: number, min: number, max: number) =>
     n < min ? max : n > max ? min : n;
 
+const tweak = {
+    slow: 0.98,
+    fast: 1.07,
+    // slow: 0.98,
+    // fast: 1.07,
+    turn: 0.03,
+    min: 0.7,
+    // min: 0.1,
+    limit: 0.5,
+};
+
 export const tick = (
     state: State,
     action: Extract<Action, { type: 'tick' }>,
 ): State => {
     const heading =
         state.heading +
-        (action.turn === 'left' ? -1 : action.turn === 'right' ? 1 : 0) * 0.03;
-    const mod = limit(state.mod * (action.turn ? 0.98 : 1.07), 0.1, 1.0);
+        (action.turn === 'left' ? -1 : action.turn === 'right' ? 1 : 0) *
+            tweak.turn;
+    const mod = limit(
+        state.mod * (action.turn ? tweak.slow : tweak.fast),
+        tweak.min,
+        1.0,
+    );
     const pos = {
         x: loop(
             Math.cos(heading) * (state.speed * mod) + state.pos.x,
@@ -218,6 +238,9 @@ const bounce = (state: State): State => {
                 closest[0].overlap / 30,
             ),
         };
+        // Slide along! gotta
+        state.pos = push(state.pos, closest[0].direction, closest[0].overlap);
+        state.speed = tweak.limit;
         // console.log(closest);
     }
     return state;
@@ -227,6 +250,8 @@ const reducer = (state: State, action: Action) => {
     switch (action.type) {
         case 'tick':
             return tick(state, action);
+        case 'stop/start':
+            return { ...state, speed: state.speed ? 0 : 0.5 };
     }
 };
 
@@ -270,6 +295,9 @@ export const Game = () => {
             }
             if (evt.key === 'ArrowRight') {
                 key.current = 'right';
+            }
+            if (evt.key === ' ') {
+                dispatch({ type: 'stop/start' });
             }
         };
         const ufn = (evt: KeyboardEvent) => {
