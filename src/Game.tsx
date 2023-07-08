@@ -27,7 +27,7 @@ const initialState: () => State = (): State => ({
     mod: 1,
     lines: [
         { type: 'arc', center: { x: 0, y: 0 }, t1: 0, t2: Math.PI, r: 200 },
-        { type: 'straight', p1: { x: 0, y: -50 }, p2: { x: 0, y: -150 } },
+        { type: 'straight', p1: { x: 20, y: -50 }, p2: { x: 20, y: -150 } },
         { type: 'straight', p1: { x: 50, y: -50 }, p2: { x: 100, y: -150 } },
         {
             type: 'arc',
