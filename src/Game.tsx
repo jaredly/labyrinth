@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useReducer, useState } from 'react';
 import { angleBetween, isClockwise } from './calcPath';
-import { State as AppState, calcBounds } from './App2';
+import { State as AppState, Screen, calcBounds } from './App2';
 import { organizeLine } from './organizeLine';
 import { calculateSingles } from './Edit';
 import { calcLocation } from './sections';
@@ -22,6 +22,8 @@ export type State = {
     lines: Line[];
     mod: number;
     float: boolean;
+    width: number;
+    height: number;
 };
 
 const TEST_STRAIGHT = false;
@@ -38,7 +40,9 @@ const tweak = {
     // limit: 0.5,
 };
 
-const makeLines = (state: AppState): Line[] => {
+const makeLines = (
+    state: AppState,
+): { lines: Line[]; width: number; height: number } => {
     if (TEST_STRAIGHT) {
         const lines: Line[] = [];
         for (let i = 0; i < 10; i++) {
@@ -55,7 +59,7 @@ const makeLines = (state: AppState): Line[] => {
                 )}`,
             });
         }
-        return lines;
+        return { lines, width: 700, height: 700 };
     }
     const bounds = calcBounds(state);
 
@@ -101,29 +105,30 @@ const makeLines = (state: AppState): Line[] => {
         })
         .filter(Boolean);
     console.log(lines);
-    return lines;
+    return { lines, width: VW + vm * 2, height: VW + vm * 2 };
 };
 
 const initialState: (appstate: AppState) => State = (appstate): State => ({
     ts: Date.now(),
     pos: { x: 0, y: 0 },
-    heading: 0,
+    heading: Math.PI / 2,
     speed: tweak.limit,
     size: 10,
     float: false,
     mod: 1,
-    lines: makeLines(appstate) ?? [
-        { type: 'arc', center: { x: 0, y: 0 }, t1: 0, t2: Math.PI, r: 200 },
-        { type: 'straight', p1: { x: 20, y: -50 }, p2: { x: 20, y: -150 } },
-        { type: 'straight', p1: { x: 50, y: -50 }, p2: { x: 100, y: -150 } },
-        {
-            type: 'arc',
-            center: { x: 0, y: 0 },
-            t1: 0,
-            t2: (Math.PI * 3) / 2,
-            r: 100,
-        },
-    ],
+    ...makeLines(appstate),
+    //  ?? [
+    //     { type: 'arc', center: { x: 0, y: 0 }, t1: 0, t2: Math.PI, r: 200 },
+    //     { type: 'straight', p1: { x: 20, y: -50 }, p2: { x: 20, y: -150 } },
+    //     { type: 'straight', p1: { x: 50, y: -50 }, p2: { x: 100, y: -150 } },
+    //     {
+    //         type: 'arc',
+    //         center: { x: 0, y: 0 },
+    //         t1: 0,
+    //         t2: (Math.PI * 3) / 2,
+    //         r: 100,
+    //     },
+    // ],
 });
 
 export type Action =
@@ -143,6 +148,9 @@ export const tick = (
     state: State,
     action: Extract<Action, { type: 'tick' }>,
 ): State => {
+    if (state.speed === 0) {
+        return state;
+    }
     const heading =
         state.heading +
         (action.turn === 'left' ? -1 : action.turn === 'right' ? 1 : 0) *
@@ -386,7 +394,13 @@ export const lineToPath = (line: State['lines'][0]) => {
     }
 };
 
-export const Game = ({ appstate }: { appstate: AppState }) => {
+export const Game = ({
+    appstate,
+    setScreen,
+}: {
+    appstate: AppState;
+    setScreen: (screen: Screen) => void;
+}) => {
     const [state, dispatch] = useReducer(reducer, appstate, initialState);
 
     const key = React.useRef(undefined as undefined | 'left' | 'right');
@@ -437,9 +451,21 @@ export const Game = ({ appstate }: { appstate: AppState }) => {
         };
     }, []);
 
+    const vm = 5;
+    const VW = Math.min(window.innerWidth, window.innerHeight, 800) - vm * 2;
+
     return (
         <div>
-            <svg width={600} height={600} viewBox="-300 -300 600 600">
+            <ScreenButtons setScreen={setScreen} screen="game" />
+            <svg
+                width={state.width}
+                height={state.height}
+                // width={VW + vm * 2}
+                // height={VW + vm * 2}
+                viewBox={`-${state.width / 2} -${state.height / 2} ${
+                    state.width
+                } ${state.height}`}
+            >
                 {state.lines.map((line, i) => (
                     <path
                         key={i}
@@ -489,3 +515,34 @@ export const Game = ({ appstate }: { appstate: AppState }) => {
         </div>
     );
 };
+
+export function ScreenButtons({
+    setScreen,
+    screen,
+}: {
+    setScreen: (screen: Screen) => void;
+    screen: Screen;
+}) {
+    return (
+        <div>
+            <button
+                onClick={() => setScreen('edit')}
+                disabled={screen === 'edit'}
+            >
+                Edit
+            </button>
+            <button
+                onClick={() => setScreen('animate')}
+                disabled={screen === 'animate'}
+            >
+                Animate
+            </button>
+            <button
+                onClick={() => setScreen('game')}
+                disabled={screen === 'game'}
+            >
+                Play
+            </button>
+        </div>
+    );
+}

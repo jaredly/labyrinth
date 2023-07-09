@@ -21,6 +21,7 @@ import classical5 from '../exports/classical-5.json';
 import classical7 from '../exports/classical-7.json';
 import classical11 from '../exports/classical-11.json';
 import symmetrical7 from '../exports/symmetrical-7.json';
+import { ScreenButtons } from './Game';
 
 // @ts-ignore
 const examples: { [key: string]: State } = {
@@ -80,7 +81,7 @@ export const Edit = ({
     return (
         <div {...callbacks}>
             <div>
-                <button onClick={() => setScreen('animate')}>Animate</button>
+                <ScreenButtons setScreen={setScreen} screen="edit" />
                 <span style={{ marginRight: 12, marginLeft: 24 }}>
                     Examples:
                 </span>

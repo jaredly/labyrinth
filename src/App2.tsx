@@ -112,7 +112,7 @@ export type Slide =
           }[];
       };
 
-export type Screen = 'edit' | 'animate';
+export type Screen = 'edit' | 'animate' | 'game';
 
 export const App2 = () => {
     const [state, dispatch] = reduceLocalStorage(
@@ -128,8 +128,8 @@ export const App2 = () => {
         () => 'edit',
     );
 
-    if (1 > 0) {
-        return <Game appstate={state} />;
+    if (screen === 'game') {
+        return <Game appstate={state} setScreen={setScreen} />;
     }
 
     if (screen === 'edit') {

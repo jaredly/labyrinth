@@ -5,6 +5,7 @@ import { calculateSingles } from './Edit';
 import { Polar, calcLocation } from './sections';
 import { angleBetween, calcPathPartsInner } from './calcPath';
 import { useLocalStorage } from './reduceLocalStorage';
+import { ScreenButtons } from './Game';
 
 export const Animate = ({
     state,
@@ -208,7 +209,7 @@ export const Animate = ({
     return (
         <div>
             <div>
-                <button onClick={() => setScreen('edit')}>Edit</button>
+                <ScreenButtons setScreen={setScreen} screen="animate" />
             </div>
             <svg
                 width={VW + vm * 2}
