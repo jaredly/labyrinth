@@ -163,13 +163,13 @@ export const tick = (
     const pos = {
         x: loop(
             Math.cos(heading) * (state.speed * mod) + state.pos.x,
-            -300,
-            300,
+            -state.width / 2,
+            state.width / 2,
         ),
         y: loop(
             Math.sin(heading) * (state.speed * mod) + state.pos.y,
-            -300,
-            300,
+            -state.width / 2,
+            state.width / 2,
         ),
     };
     return bounce({ ...state, heading, pos, mod });
