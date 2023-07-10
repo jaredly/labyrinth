@@ -33,16 +33,17 @@ const tweak = {
     fast: 1.07,
     // slow: 0.98,
     // fast: 1.07,
-    turn: 0.03,
+    turn: 0.02,
+    // turn: 0.03,
     min: 0.7,
     // min: 0.1,
-    limit: 1,
-    // limit: 0.5,
+    // limit: 1,
+    limit: 0.5,
 };
 
 const makeLines = (
     state: AppState,
-): { lines: Line[]; width: number; height: number } => {
+): { lines: Line[]; width: number; height: number; size: number } => {
     if (TEST_STRAIGHT) {
         const lines: Line[] = [];
         for (let i = 0; i < 10; i++) {
@@ -59,7 +60,7 @@ const makeLines = (
                 )}`,
             });
         }
-        return { lines, width: 700, height: 700 };
+        return { lines, width: 700, height: 700, size: 10 };
     }
     const bounds = calcBounds(state);
 
@@ -105,7 +106,7 @@ const makeLines = (
         })
         .filter(Boolean);
     console.log(lines);
-    return { lines, width: VW + vm * 2, height: VW + vm * 2 };
+    return { lines, width: VW + vm * 2, height: VW + vm * 2, size: dr / 3 };
 };
 
 const initialState: (appstate: AppState) => State = (appstate): State => ({
@@ -113,7 +114,7 @@ const initialState: (appstate: AppState) => State = (appstate): State => ({
     pos: { x: 0, y: 0 },
     heading: Math.PI / 2,
     speed: tweak.limit,
-    size: 10,
+    // size: 10,
     float: false,
     mod: 1,
     ...makeLines(appstate),
@@ -405,6 +406,8 @@ export const Game = ({
 
     const key = React.useRef(undefined as undefined | 'left' | 'right');
 
+    const [zoom, setZoom] = useState(false);
+
     React.useEffect(() => {
         const fn = () => {
             dispatch({ type: 'tick', ts: Date.now(), turn: key.current });
@@ -458,51 +461,70 @@ export const Game = ({
         <div>
             <ScreenButtons setScreen={setScreen} screen="game" />
             <svg
+                // width={state.width / 4}
+                // height={state.height / 4}
                 width={state.width}
                 height={state.height}
-                // width={VW + vm * 2}
-                // height={VW + vm * 2}
                 viewBox={`-${state.width / 2} -${state.height / 2} ${
                     state.width
                 } ${state.height}`}
             >
-                {state.lines.map((line, i) => (
-                    <path
-                        key={i}
-                        stroke="#333"
-                        strokeWidth={3}
-                        fill="none"
-                        d={lineToPath(line)}
-                    />
-                ))}
-                {state.lines.map((line, i) =>
-                    line.type === 'straight' && line.ann ? (
-                        <text
-                            key={i}
-                            x={(line.p1.x + line.p2.x) / 2}
-                            y={(line.p1.y + line.p2.y) / 2}
-                            fill="white"
+                <g
+                    transform={`rotate(${
+                        -((state.heading + Math.PI / 2) / Math.PI) * 180
+                    })`}
+                >
+                    <g transform={`scale(2 2)`}>
+                        <g
+                            transform={`translate(${-state.pos.x} ${-state.pos
+                                .y})`}
                         >
-                            {line.ann}
-                        </text>
-                    ) : null,
-                )}
-                <circle
-                    cx={state.pos.x}
-                    cy={state.pos.y}
-                    r={state.size}
-                    fill="green"
-                />
-                <circle
-                    cx={
-                        state.pos.x + Math.cos(state.heading) * (state.size - 4)
-                    }
-                    cy={
-                        state.pos.y + Math.sin(state.heading) * (state.size - 4)
-                    }
-                    r={3}
-                    fill="white"
-                />
+                            {state.lines.map((line, i) => (
+                                <path
+                                    key={i}
+                                    stroke="#333"
+                                    strokeWidth={state.size / 4}
+                                    fill="none"
+                                    d={lineToPath(line)}
+                                    strokeLinecap="round"
+                                    strokeDasharray={`${state.size / 4} ${
+                                        state.size / 2
+                                    }`}
+                                />
+                            ))}
+                            {state.lines.map((line, i) =>
+                                line.type === 'straight' && line.ann ? (
+                                    <text
+                                        key={i}
+                                        x={(line.p1.x + line.p2.x) / 2}
+                                        y={(line.p1.y + line.p2.y) / 2}
+                                        fill="white"
+                                    >
+                                        {line.ann}
+                                    </text>
+                                ) : null,
+                            )}
+                            <circle
+                                cx={state.pos.x}
+                                cy={state.pos.y}
+                                r={state.size}
+                                fill="green"
+                            />
+                            <circle
+                                cx={
+                                    state.pos.x +
+                                    Math.cos(state.heading) * (state.size / 2)
+                                }
+                                cy={
+                                    state.pos.y +
+                                    Math.sin(state.heading) * (state.size / 2)
+                                }
+                                r={state.size / 4}
+                                fill="white"
+                            />
+                        </g>
+                    </g>
+                </g>
                 {/* <path
                     stroke="white"
                     strokeWidth={1}

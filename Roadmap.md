@@ -2,8 +2,9 @@
 ## Game
 
 - [x] load up the actual labyrinth!
-
-- [ ] handle all hits
+- [x] handle all hits
+- [x] lookin great
+- [ ] fixed vs zoomy and such
 
 #
 
