@@ -100,7 +100,7 @@ export const calcPolar = (
 
 export const calcLocation = ({
     pos: { x, y },
-    dr,
+    dr: pathWidth,
     r0,
     sectionTheta,
     rows,
@@ -115,11 +115,11 @@ export const calcLocation = ({
     col: number;
     section: number;
 }): Polar => {
-    const r = (r0 + x) * dr;
+    const r = (r0 + x) * pathWidth;
     let t = sectionTheta;
     const offset = y - (rows / 2 - 0.5);
     if (r > 0) {
-        t += (offset * dr) / r;
+        t += (offset * pathWidth) / r;
     }
     t = normalizeAngle(t);
     return {
@@ -135,12 +135,7 @@ export const calcLocation = ({
     };
 };
 
-export const sectionMap2 = (
-    sections: Section[],
-    dr: number,
-    r0: number,
-    width: number,
-) => {
+export const sectionMap2 = (sections: Section[], dr: number, r0: number, width: number) => {
     const mapping: SectionMap = {};
     let col = 0;
     sections.forEach(({ rows, pairs }, i) => {
@@ -231,12 +226,7 @@ export const pointDistance2 = (polar: SectionMap[''][]) => {
     });
 };
 
-export const pointDistance = (
-    points: Coord[],
-    sm: SectionMap,
-    dr: number,
-    size: State['size'],
-) => {
+export const pointDistance = (points: Coord[], sm: SectionMap, dr: number, size: State['size']) => {
     let dist = 0;
     return points
         .map(({ x, y }) => ({ x: size.width - 1 - x, y })) // : size.height - 1 - y}))

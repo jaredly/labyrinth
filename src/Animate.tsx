@@ -7,13 +7,83 @@ import { angleBetween, calcPathPartsInner } from './calcPath';
 import { useLocalStorage } from './reduceLocalStorage';
 import { ScreenButtons } from './Game';
 
-export const Animate = ({
-    state,
-    setScreen,
-}: {
-    state: State;
-    setScreen: (s: Screen) => void;
-}) => {
+export type Mode = 'line' | 'dot' | 'steps' | 'slug';
+
+function easeInOut(t: number) {
+    return t > 0.5 ? 4 * Math.pow(t - 1, 3) + 1 : 4 * Math.pow(t, 3);
+}
+
+const Steps = ({ VW, pos, pathNode, pathWidth }: { pathWidth: number; VW: number; pos: number; pathNode: SVGPathElement }) => {
+    const margin = VW / 100;
+
+    const r = (pathWidth - margin) / 2;
+    const d = r * 4;
+    // const total = pathNode.getTotalLength()
+    const mpos = Math.floor(pos / d) * d;
+    const off = (mpos - pos) / d;
+    const ppos = pathNode.getPointAtLength(mpos);
+    const nextPos = pathNode.getPointAtLength(mpos + d);
+    const uberNext = pathNode.getPointAtLength(mpos + d * 2);
+
+    // const now = off + 0.5;
+    // const next = 0.5 - off;
+    const now = 1 + off;
+    const next = -off;
+    // const now = easeInOut(1 + off);
+    // const next = easeInOut(-off);
+    return (
+        <>
+            <circle cx={ppos.x} cy={ppos.y} r={r * (0.9 + now * 0.1)} fill="#77f" opacity={now} />
+            <circle cx={nextPos.x} cy={nextPos.y} r={r} fill="#77f" opacity={1} />
+            <circle cx={uberNext.x} cy={uberNext.y} r={r * (0.9 + next * 0.1)} fill="#77f" opacity={next} />
+        </>
+    );
+};
+
+const Dot = ({ VW, pos, pathNode }: { VW: number; pos: number; pathNode: SVGPathElement }) => {
+    const ppos = pathNode.getPointAtLength(pos);
+    return <circle cx={ppos.x} cy={ppos.y} r={VW / 80} fill="#77f" />;
+};
+
+const Slug = ({ pathString, length, pos, VW, pathWidth }: { pathWidth: number; VW: number; pathString: string; length: number; pos: number }) => {
+    const margin = VW / 100;
+    pos *= 2;
+    let second = pos >= length;
+    if (pos > length) {
+        pos = length * 2 - pos;
+    }
+    const sep = (pathWidth - margin) * 1.8;
+    if (pos < 0) pos = 0;
+
+    if (pos > length - sep - 5) pos = length - sep - 5;
+
+    return (
+        <path
+            d={pathString}
+            strokeDasharray={length ? `1 ${sep} 1 ${length}` : undefined}
+            strokeDashoffset={-pos}
+            stroke={second ? '#fa7' : '#77f'}
+            strokeLinecap="round"
+            strokeWidth={pathWidth - margin}
+            fill="none"
+        />
+    );
+};
+
+const Line = ({ pathString, length, pos, VW }: { VW: number; pathString: string; length: number; pos: number }) => {
+    return (
+        <path
+            d={pathString}
+            strokeDasharray={length ? `${pos} ${length - pos}` : undefined}
+            stroke="#77f"
+            strokeLinecap="round"
+            strokeWidth={VW / 80}
+            fill="none"
+        />
+    );
+};
+
+export const Animate = ({ state, setScreen }: { state: State; setScreen: (s: Screen) => void }) => {
     const bounds = calcBounds(state);
 
     const singles: { [key: string]: number } = calculateSingles(state.sections);
@@ -48,8 +118,7 @@ export const Animate = ({
     const polars = line.map((k) => {
         const [section, pos] = k.split(':');
         const [ring, row] = pos.split(',');
-        const sectionTheta =
-            (+section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
+        const sectionTheta = (+section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
         const y = +row;
         return calcLocation({
             pos: { x: bounds.width - +ring, y: y },
@@ -65,17 +134,7 @@ export const Animate = ({
     const nodes: JSX.Element[] = [];
     const [rounded, setRounded] = React.useState(true);
 
-    produceBorders(
-        nodes,
-        VW,
-        totalCols,
-        state,
-        col,
-        sectionCols,
-        bounds,
-        dr,
-        r0,
-    );
+    produceBorders(nodes, VW, totalCols, state, col, sectionCols, bounds, dr, r0);
 
     const pathString = React.useMemo(
         () =>
@@ -94,13 +153,10 @@ export const Animate = ({
             ).join(' '),
         [state.sections, dr, r0, polars, totalCols],
     );
-    const [mode, setMode] = React.useState('line' as 'line' | 'dot');
+    const [mode, setMode] = React.useState('slug' as Mode);
 
     const pathNode = React.useMemo(() => {
-        const node = document.createElementNS(
-            'http://www.w3.org/2000/svg',
-            'path',
-        );
+        const node = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         node.setAttribute('d', pathString);
         // const length = node.getTotalLength();
         // console.log('d len', length);
@@ -140,27 +196,23 @@ export const Animate = ({
                 if (s.speed < 0 && s.pos <= 0) {
                     return { ...s, run: false, pos: 0 };
                 }
-                if (s.pos < length - d * 2) {
-                    const one = pathNode.getPointAtLength(s.pos);
-                    const two = pathNode.getPointAtLength(s.pos + d);
-                    const three = pathNode.getPointAtLength(s.pos + d * 2);
-                    const a1 = Math.atan2(one.y - two.y, one.x - two.x);
-                    const a2 = Math.atan2(three.y - two.y, three.x - two.x);
-                    const angle = angleBetween(a1, a2, true);
-                    const off = Math.abs(angle - Math.PI);
-                    // TODO: Slow more at higher curve, less at lower curve
-                    const max = Math.PI / 20;
-                    if (off > max) {
-                        const percent = 1 - (off - max) / Math.PI;
-                        return { ...s, pos: s.pos + d * percent };
-                    }
-                }
+                // if (s.pos < length - d * 2) {
+                //     const one = pathNode.getPointAtLength(s.pos);
+                //     const two = pathNode.getPointAtLength(s.pos + d);
+                //     const three = pathNode.getPointAtLength(s.pos + d * 2);
+                //     const a1 = Math.atan2(one.y - two.y, one.x - two.x);
+                //     const a2 = Math.atan2(three.y - two.y, three.x - two.x);
+                //     const angle = angleBetween(a1, a2, true);
+                //     const off = Math.abs(angle - Math.PI);
+                //     // TODO: Slow more at higher curve, less at lower curve
+                //     const max = Math.PI * 0.1;
+                //     if (off > max) {
+                //         const percent = 1 - (off - max) / Math.PI;
+                //         return { ...s, pos: s.pos + d * percent };
+                //     }
+                // }
 
-                return !s.run
-                    ? s
-                    : s.pos >= length
-                    ? { ...s, run: false }
-                    : { ...s, pos: s.pos + d };
+                return !s.run ? s : s.pos >= length ? { ...s, run: false } : { ...s, pos: s.pos + d };
             });
             id = requestAnimationFrame(fn);
         };
@@ -179,23 +231,16 @@ export const Animate = ({
         };
     }, [speed.run, length]);
 
-    const [{ scale, smooth, rotate }, setState] = useLocalStorage(
-        'animate-settings',
-        () => ({
-            scale: 8,
-            smooth: 20,
-            rotate: false,
-        }),
-    );
+    const [{ scale, smooth, rotate }, setState] = useLocalStorage('animate-settings', () => ({
+        scale: 8,
+        smooth: 20,
+        rotate: false,
+    }));
 
     const amt = speed.pos;
     const ppos = pathNode.getPointAtLength(amt);
     const pnext = pathNode.getPointAtLength(amt + smooth);
-    let t = !rotate
-        ? -Math.PI / 2
-        : speed.pos >= length - 0.01
-        ? -Math.PI / 2
-        : Math.atan2(pnext.y - ppos.y, pnext.x - ppos.x);
+    let t = !rotate ? -Math.PI / 2 : speed.pos >= length - 0.01 ? -Math.PI / 2 : Math.atan2(pnext.y - ppos.y, pnext.x - ppos.x);
 
     if (speed.speed < 0) {
         t += Math.PI;
@@ -203,19 +248,12 @@ export const Animate = ({
 
     const SCALE = scale;
 
-    // const c = VW / 2;
-    // rotate(${-(t / Math.PI) * 180})
-    // rotate(${-(t / Math.PI) * 180})
     return (
         <div>
             <div>
                 <ScreenButtons setScreen={setScreen} screen="animate" />
             </div>
-            <svg
-                width={VW + vm * 2}
-                height={VW + vm * 2}
-                style={{ backgroundColor: '#0a0a0a' }}
-            >
+            <svg width={VW + vm * 2} height={VW + vm * 2} style={{ backgroundColor: '#0a0a0a' }}>
                 <g transform={`translate(${VW / 2}, ${VW / 2})`}>
                     <g
                         transform={`
@@ -223,51 +261,18 @@ export const Animate = ({
                             scale(${SCALE} ${SCALE})
                         `}
                     >
-                        <g
-                            transform={
-                                scale > 1 || rotate
-                                    ? `translate(${-ppos.x} ${-ppos.y})`
-                                    : ''
-                            }
-                        >
+                        <g transform={scale > 1 || rotate ? `translate(${-ppos.x} ${-ppos.y})` : ''}>
                             {nodes}
                             {mode === 'dot' ? (
-                                <circle
-                                    cx={ppos.x}
-                                    cy={ppos.y}
-                                    r={VW / 80}
-                                    fill="#77f"
-                                />
+                                // <circle cx={ppos.x} cy={ppos.y} r={VW / 80} fill="#77f" />
+                                <Dot VW={VW} pathNode={pathNode} pos={speed.pos} />
+                            ) : mode === 'steps' ? (
+                                <Steps VW={VW} pathWidth={dr} pathNode={pathNode} pos={speed.pos} />
+                            ) : mode === 'slug' ? (
+                                <Slug VW={VW} pathWidth={dr} pathString={pathString} length={length} pos={speed.pos} />
                             ) : (
-                                <path
-                                    // ref={(node) => {
-                                    //     if (node && length == null) {
-                                    //         setLength(node.getTotalLength());
-                                    //     }
-                                    // }}
-                                    d={pathString}
-                                    strokeDasharray={
-                                        length
-                                            ? mode === 'line'
-                                                ? `${speed.pos} ${
-                                                      length - speed.pos
-                                                  }`
-                                                : `1 1000000`
-                                            : undefined
-                                    }
-                                    stroke="#77f"
-                                    strokeLinecap="round"
-                                    strokeWidth={VW / 80}
-                                    fill="none"
-                                />
+                                <Line VW={VW} pathString={pathString} length={length} pos={speed.pos} />
                             )}
-                            {/* <circle cx={ppos.x} cy={ppos.y} r={5} fill="#77f" />
-                            <circle
-                                cx={ppos.x}
-                                cy={ppos.y}
-                                r={3}
-                                fill="#0a0a0a"
-                            /> */}
                         </g>
                     </g>
                 </g>
@@ -291,13 +296,7 @@ export const Animate = ({
                     {scale}
                 </div>
                 <div>
-                    <button
-                        onClick={() =>
-                            setSpeed((s) => ({ ...s, speed: -s.speed }))
-                        }
-                    >
-                        Reverse
-                    </button>
+                    <button onClick={() => setSpeed((s) => ({ ...s, speed: -s.speed }))}>Reverse</button>
                 </div>
                 <div>
                     Smooth:
@@ -342,27 +341,13 @@ export const Animate = ({
                         max={length}
                         step={1}
                         value={speed.pos}
-                        onChange={(evt) =>
-                            setSpeed((s) => ({ ...s, pos: +evt.target.value }))
-                        }
+                        onChange={(evt) => setSpeed((s) => ({ ...s, pos: +evt.target.value }))}
                     />
                     {speed.pos.toFixed(0)}
                 </div>
-                <button
-                    onClick={() =>
-                        setState((s) => ({ ...s, rotate: !s.rotate }))
-                    }
-                >
-                    {rotate ? 'Rotate' : 'Fixed'}
-                </button>
-                <button
-                    onClick={() => setSpeed((s) => ({ ...s, run: !s.run }))}
-                >
-                    {speed.run ? 'Stop' : 'Run'}
-                </button>
-                <button onClick={() => setRounded(!rounded)}>
-                    {rounded ? 'Rounded' : 'Unrounded'}
-                </button>
+                <button onClick={() => setState((s) => ({ ...s, rotate: !s.rotate }))}>{rotate ? 'Rotate' : 'Fixed'}</button>
+                <button onClick={() => setSpeed((s) => ({ ...s, run: !s.run }))}>{speed.run ? 'Stop' : 'Run'}</button>
+                <button onClick={() => setRounded(!rounded)}>{rounded ? 'Rounded' : 'Unrounded'}</button>
                 <div>
                     <button
                         onClick={() =>
@@ -409,10 +394,17 @@ export const Animate = ({
                         30 secs
                     </button>
                 </div>
-                <button
-                    onClick={() => setMode(mode === 'line' ? 'dot' : 'line')}
-                >
-                    Line / Dot
+                <button disabled={mode === 'line'} onClick={() => setMode('line')}>
+                    Line
+                </button>
+                <button disabled={mode === 'dot'} onClick={() => setMode('dot')}>
+                    Dot
+                </button>
+                <button disabled={mode === 'steps'} onClick={() => setMode('steps')}>
+                    Steps
+                </button>
+                <button disabled={mode === 'slug'} onClick={() => setMode('slug')}>
+                    Slug
                 </button>
             </div>
         </div>
@@ -429,8 +421,7 @@ export const addCircular = (
     p2: Coord,
     col: number,
 ): [Polar, Polar] => {
-    const sectionTheta =
-        (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
+    const sectionTheta = (section / state.sections.length) * Math.PI * 2 + Math.PI / 2;
 
     return [
         calcLocation({
@@ -455,7 +446,7 @@ export const addCircular = (
 };
 
 const DASHW = window.innerWidth / 400;
-const DASH = `${DASHW / 4} ${DASHW * 2}`;
+const DASH = undefined; // `${DASHW / 4} ${DASHW * 2}`;
 // const DCOLOR = 'white';
 const DCOLOR = '#333';
 
@@ -470,21 +461,19 @@ function produceBorders(
     dr: number,
     r0: number,
 ) {
-    produceBorders_(state, col, sectionCols, bounds, dr, r0).forEach(
-        (polar, i) => {
-            nodes.push(
-                <path
-                    key={i}
-                    d={calcPathPartsInner(polar, 0, 0, totalCols).join(' ')}
-                    strokeLinecap="round"
-                    fill="none"
-                    strokeDasharray={DASH}
-                    stroke={DCOLOR}
-                    strokeWidth={DASHW}
-                />,
-            );
-        },
-    );
+    produceBorders_(state, col, sectionCols, bounds, dr, r0).forEach((polar, i) => {
+        nodes.push(
+            <path
+                key={i}
+                d={calcPathPartsInner(polar, 0, 0, totalCols).join(' ')}
+                strokeLinecap="round"
+                fill="none"
+                strokeDasharray={DASH}
+                stroke={DCOLOR}
+                strokeWidth={DASHW}
+            />,
+        );
+    });
 }
 
 export function produceBorders_(
@@ -503,41 +492,17 @@ export function produceBorders_(
             for (let y = 0; y < rows; y++) {
                 const p1 = pairKey({ x, y }, { x: x - 1, y });
                 if (!pairs[p1]) {
-                    paths.push(
-                        addCircular(
-                            dr,
-                            r0,
-                            bounds.width,
-                            state,
-                            i,
-                            { x: x - 0.5, y: y - 0.5 },
-                            { x: x - 0.5, y: y + 0.5 },
-                            col,
-                        ),
-                    );
+                    paths.push(addCircular(dr, r0, bounds.width, state, i, { x: x - 0.5, y: y - 0.5 }, { x: x - 0.5, y: y + 0.5 }, col));
                 }
                 const p2 = pairKey({ x, y }, { x, y: y + 1 });
                 if (x < bounds.width - 2 && y < rows - 1 && !pairs[p2]) {
-                    paths.push(
-                        addCircular(
-                            dr,
-                            r0,
-                            bounds.width,
-                            state,
-                            i,
-                            { x: x - 0.5, y: y + 0.5 },
-                            { x: x + 0.5, y: y + 0.5 },
-                            col,
-                        ),
-                    );
+                    paths.push(addCircular(dr, r0, bounds.width, state, i, { x: x - 0.5, y: y + 0.5 }, { x: x + 0.5, y: y + 0.5 }, col));
                 }
             }
         }
 
-        const sectionTheta =
-            (i / state.sections.length) * Math.PI * 2 + Math.PI / 2;
-        const nsectionTheta =
-            ((i + 1) / state.sections.length) * Math.PI * 2 + Math.PI / 2;
+        const sectionTheta = (i / state.sections.length) * Math.PI * 2 + Math.PI / 2;
+        const nsectionTheta = ((i + 1) / state.sections.length) * Math.PI * 2 + Math.PI / 2;
 
         for (let x = 0; x < bounds.width - 1; x++) {
             // const k1 = `${i}:${x},${rows - 1}`;
